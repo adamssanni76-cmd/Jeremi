@@ -1,0 +1,48 @@
+=============================
+  HOW TO RUN JEREMI (PWA)
+=============================
+
+LOCAL TESTING (same WiFi):
+  1. pip install flask flask-socketio eventlet
+  2. python app.py
+  3. Open http://localhost:5000 in Chrome/Edge
+
+  Other devices on same WiFi:
+  - Find your IP: open cmd, type "ipconfig", look for IPv4 Address
+  - Other players visit: http://YOUR-IP:5000
+
+  NOTE: "Add to Home Screen" / Install App only works fully over HTTPS.
+  On localhost it usually still works in Chrome for testing.
+
+==========================================
+  HOSTING ONLINE (for real PWA install)
+==========================================
+
+To get a proper installable app with a permanent link (https://...),
+host this on a free service. Recommended: Render.com
+
+STEPS FOR RENDER:
+  1. Create a free account at render.com
+  2. Create a new "Web Service"
+  3. Upload this jeremi_app folder (or connect a GitHub repo)
+  4. Set:
+       Build Command:  pip install -r requirements.txt
+       Start Command:  python app.py
+  5. Render gives you a URL like: https://jeremi-xyz.onrender.com
+  6. Open that URL on your phone -> browser menu -> "Add to Home Screen"
+     -> JEREMI installs like an app with its own icon!
+
+ALTERNATIVE: Railway.app, PythonAnywhere, or Replit also work similarly.
+
+==========================================
+  HOW TO PLAY
+==========================================
+  1. Player 1 clicks "Create New Game"
+  2. Share the 6-letter room code
+  3. Others click "Join Game" and enter the code
+  4. Player 1 clicks "Start Game"
+  5. Drag tiles from rack to board (or click tile, then click square)
+  6. DIACRITICS: select a diacritic tile -> occupied squares glow gold
+     -> click a glowing square to combine (e.g. a + ̃ -> ã)
+  7. Click "Submit Word" to score
+  8. Use Undo, Replace, or Pass as needed
