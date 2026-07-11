@@ -192,7 +192,16 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 <script src="/static/app.js"></script>
+<script>
+// Load Socket.IO only when needed for online play
+function loadSocketIO(cb){
+  if(window.io){ cb(); return; }
+  const s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js';
+  s.onload=cb; s.onerror=()=>{ console.warn('Socket.IO CDN failed'); cb(); };
+  document.head.appendChild(s);
+}
+</script>
 </body>
 </html>
