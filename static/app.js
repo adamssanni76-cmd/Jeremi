@@ -13,7 +13,9 @@ function toggleMP(){
 
 function initMP(serverUrl, roomCode, playerName){
   MP.active = true;
-  socket = io(serverUrl, {transports:['websocket','polling']});
+  loadSocketIO(()=>{
+    if(!window.io){ showToast('Socket.IO unavailable. Check internet.','err'); MP.active=false; return; }
+    socket = io(serverUrl, {transports:['websocket','polling']});
 
   socket.on('connect', ()=>showToast('Connected ✓','ok'));
   socket.on('connect_error', ()=>{ showToast('Cannot connect to server','err'); MP.active=false; });
@@ -104,6 +106,7 @@ function initMP(serverUrl, roomCode, playerName){
   } else {
     socket.emit('create_room',{name:playerName});
   }
+  }); // end loadSocketIO
 }
 
 // ============================================================
@@ -512,6 +515,7 @@ function updateFields(){
 }
 
 function startGame(){
+  try{
   const mode = document.getElementById('mpMode')?.value||'local';
   if(mode==='online'){
     const serverUrl = document.getElementById('mpServer').value.trim()||window.location.origin;
@@ -540,6 +544,7 @@ function startGame(){
     buildUI();renderAll();
     if(G.players[G.ci].isAI)aiTurn();
   });
+  } catch(e){ showToast('Error: '+e.message,'err'); console.error(e); }
 }
 
 // ─── BUILD UI ─────────────────────────────────────────────────
