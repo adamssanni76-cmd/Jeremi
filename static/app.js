@@ -1,3 +1,8 @@
+
+window._startOnlineGame = function(){
+  if(socket && MP.roomId) socket.emit('start_game',{room_id:MP.roomId});
+};
+
 // ─── MULTIPLAYER ─────────────────────────────────────────────
 let socket = null;
 let MP = { active:false, roomId:null, playerIndex:null };
@@ -29,7 +34,7 @@ function initMP(serverUrl, roomCode, playerName){
       '<p id="waitList" style="font-size:12px;color:#8b9099;text-align:center">Waiting for players to join...</p>',
       null, null);
     document.getElementById('infoBtns').innerHTML=
-      '<button class="btn primary" onclick="socket.emit('start_game',{room_id:MP.roomId})">▶ Start Game</button>';
+      '<button class="btn primary" onclick="window._startOnlineGame()">▶ Start Game</button>';
   });
 
   socket.on('room_joined', d=>{
