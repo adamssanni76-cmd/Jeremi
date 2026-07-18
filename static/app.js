@@ -676,9 +676,26 @@ function renderBoard(){
     }
 
     div.addEventListener("click",()=>onCell(r,c));
-    div.addEventListener("dragover",e=>{e.preventDefault();div.classList.add("drop-ok");});
-    div.addEventListener("dragleave",()=>renderBoard());
-    div.addEventListener("drop",e=>{e.preventDefault();G.si=G.dragIdx;onCell(r,c);});
+    div.addEventListener("dragover",e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      const selTile = G.dragIdx>=0 ? G.players[G.ci].hand[G.dragIdx] : null;
+      if(selTile){
+        const bc = G.board[r][c];
+        if(selTile.type==='D' && bc && bc.symbol) div.classList.add('drop-diac');
+        else if(selTile.type!=='D' && !(bc && bc.symbol)) div.classList.add('drop-ok');
+      }
+    });
+    div.addEventListener("dragleave",e=>{
+      if(!div.contains(e.relatedTarget)){
+        div.classList.remove('drop-ok','drop-diac');
+      }
+    });
+    div.addEventListener("drop",e=>{
+      e.preventDefault();
+      div.classList.remove('drop-ok','drop-diac');
+      if(G.dragIdx>=0){ G.si=G.dragIdx; onCell(r,c); G.dragIdx=-1; }
+    });
     el.appendChild(div);
   }
 }
@@ -699,8 +716,17 @@ function renderRack(){
     div.appendChild(pb);
     if(myTurn){
       div.draggable=true;
-      div.addEventListener("dragstart",()=>{G.dragIdx=i;div.classList.add("drag");});
-      div.addEventListener("dragend",()=>div.classList.remove("drag"));
+      div.addEventListener("dragstart",e=>{
+        G.dragIdx=i; G.si=i;
+        div.classList.add("drag");
+        e.dataTransfer.effectAllowed="move";
+        e.dataTransfer.setData("text/plain", String(i));
+      });
+      div.addEventListener("dragend",()=>{
+        div.classList.remove("drag");
+        document.querySelectorAll('.drop-ok,.drop-diac').forEach(el=>el.classList.remove('drop-ok','drop-diac'));
+        G.dragIdx=-1;
+      });
       div.addEventListener("click",()=>onTile(i));
     }
     el.appendChild(div);
