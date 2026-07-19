@@ -1,117 +1,113 @@
+// ─── MULTIPLAYER ─────────────────────────────────────────────
+let socket=null;
+let MP={active:false,roomId:null,playerIndex:null};
 
-window._startOnlineGame = function(){
-  if(socket && MP.roomId) socket.emit('start_game',{room_id:MP.roomId});
+window._startOnlineGame=function(){
+  if(socket&&MP.roomId)socket.emit("start_game",{room_id:MP.roomId});
 };
 
-// ─── MULTIPLAYER ─────────────────────────────────────────────
-let socket = null;
-let MP = { active:false, roomId:null, playerIndex:null };
-
 function toggleMP(){
-  const mode = document.getElementById('mpMode').value;
-  document.getElementById('mpFields').style.display = mode==='online'?'block':'none';
-  if(mode==='online'){
-    const srv = document.getElementById('mpServer');
-    if(!srv.value) srv.value = window.location.origin;
+  const m=document.getElementById("mpMode").value;
+  document.getElementById("mpFields").style.display=m==="online"?"block":"none";
+  if(m==="online"){
+    const s=document.getElementById("mpServer");
+    if(!s.value)s.value=window.location.origin;
   }
 }
 
-function initMP(serverUrl, roomCode, playerName){
-  MP.active = true;
+function initMP(serverUrl,roomCode,playerName){
   loadSocketIO(()=>{
-    if(!window.io){ showToast('Socket.IO unavailable. Check internet.','err'); MP.active=false; return; }
-    socket = io(serverUrl, {transports:['websocket','polling']});
+    if(!window.io){showToast("Socket.IO unavailable","err");MP.active=false;return;}
+    socket=io(serverUrl,{transports:["websocket","polling"]});
+    socket.on("connect",()=>showToast("Connected ✓","ok"));
+    socket.on("connect_error",()=>{showToast("Cannot connect to server","err");MP.active=false;});
+    socket.on("error",d=>showToast("⚠ "+d.msg,"err"));
 
-  socket.on('connect', ()=>showToast('Connected ✓','ok'));
-  socket.on('connect_error', ()=>{ showToast('Cannot connect to server','err'); MP.active=false; });
-  socket.on('error', d=>showToast('⚠ '+d.msg,'err'));
+    socket.on("room_created",d=>{
+      MP.roomId=d.room_id;MP.playerIndex=d.player_index;
+      showInfo("Room Created",
+        "<p style='text-align:center;font-size:12px;color:#8b9099'>Share this code:</p>"+
+        "<div style='text-align:center;font-size:40px;font-weight:bold;letter-spacing:10px;color:#c9a227;padding:12px'>"+d.room_id+"</div>"+
+        "<p id='waitList' style='font-size:12px;color:#8b9099;text-align:center'>Waiting for players...</p>",
+        null,null);
+      document.getElementById("infoBtns").innerHTML=
+        "<button class='btn primary' onclick='window._startOnlineGame()'>▶ Start Game</button>";
+    });
 
-  socket.on('room_created', d=>{
-    MP.roomId=d.room_id; MP.playerIndex=d.player_index;
-    showInfo('Room Created',
-      '<p style="text-align:center;font-size:13px;color:#8b9099">Share this code with other players:</p>'+
-      '<div style="text-align:center;font-size:36px;font-weight:bold;letter-spacing:10px;color:#c9a227;padding:16px 0">'+d.room_id+'</div>'+
-      '<p id="waitList" style="font-size:12px;color:#8b9099;text-align:center">Waiting for players to join...</p>',
-      null, null);
-    document.getElementById('infoBtns').innerHTML=
-      '<button class="btn primary" onclick="window._startOnlineGame()">▶ Start Game</button>';
-  });
+    socket.on("room_joined",d=>{
+      MP.roomId=d.room_id;MP.playerIndex=d.player_index;
+      showInfo("Joined Room "+d.room_id,
+        "<p style='text-align:center;color:#8b9099;font-size:13px'>Waiting for host to start...</p>",
+        null,null);
+    });
 
-  socket.on('room_joined', d=>{
-    MP.roomId=d.room_id; MP.playerIndex=d.player_index;
-    showInfo('Joined Room '+d.room_id,
-      '<p style="text-align:center;color:#8b9099;font-size:13px">Waiting for host to start...</p>',
-      null, null);
-  });
+    socket.on("room_update",d=>{
+      const el=document.getElementById("waitList");
+      if(el)el.innerHTML=d.players.map((p,i)=>
+        "<div style='padding:4px 0;font-size:13px'>"+(i===0?"👑 ":"")+p+(i===MP.playerIndex?" (You)":"")+"</div>"
+      ).join("");
+    });
 
-  socket.on('room_update', d=>{
-    const el = document.getElementById('waitList');
-    if(el) el.innerHTML = d.players.map((p,i)=>
-      '<div style="padding:4px 0;font-size:13px">'+(i===0?'👑 ':'')+p+(i===MP.playerIndex?' (You)':'')+'</div>'
-    ).join('');
-  });
+    socket.on("game_started",d=>{
+      document.getElementById("ovInfo").classList.remove("show");
+      document.getElementById("ovSetup").classList.remove("show");
+      G.players=d.players.map(name=>({name,score:0,hand:[],isAI:false}));
+      G.ci=0; G.board=Array.from({length:15},()=>Array(15).fill(null));
+      G.bht=false; G.placed=[]; G.hist=[]; G.tn=1;
+      buildUI();renderAll();
+      showToast(d.first+" goes first!","info");
+    });
 
-  socket.on('game_started', d=>{
-    document.getElementById('ovInfo').classList.remove('show');
-    document.getElementById('ovSetup').classList.remove('show');
-    // Setup local G state from server
-    G.players = d.players.map((name,i)=>({name,score:0,hand:[],isAI:false}));
-    G.ci = 0;
-    buildUI(); renderAll();
-    showToast(d.first+' goes first!','info');
-  });
-
-  socket.on('game_state', d=>{
-    if(d.board){
-      // Sync board from server
-      for(let r=0;r<15;r++) for(let c=0;c<15;c++){
-        const cell = d.board[r][c];
-        G.board[r][c] = (cell && cell.symbol) ? cell : null;
+    socket.on("game_state",d=>{
+      if(d.board){
+        for(let r=0;r<15;r++)for(let c=0;c<15;c++){
+          const cell=d.board[r][c];
+          G.board[r][c]=(cell&&cell.symbol)?{symbol:cell.symbol,points:cell.points,type:cell.type}:null;
+        }
       }
+      if(d.players)d.players.forEach((p,i)=>{if(G.players[i])G.players[i].score=p.score;});
+      G.ci=d.current_turn;
+      renderBoard();renderSB();
+      const pill=document.getElementById("turnPill");
+      if(pill)pill.textContent="Turn "+d.turn_number+" — "+G.players[G.ci].name;
+      const bag=document.querySelector(".bag-info");
+      if(bag)bag.textContent="🎴 "+d.bag_count+" in bag";
+    });
+
+    socket.on("your_hand",d=>{
+      if(d.player_index===MP.playerIndex&&G.players[d.player_index]){
+        G.players[d.player_index].hand=d.hand;
+        if(G.ci===MP.playerIndex)renderRack();
+      }
+    });
+
+    socket.on("your_turn",d=>{
+      if(d.player_index===MP.playerIndex){
+        G.ci=MP.playerIndex;
+        showToast("Your turn!","ok");
+        renderAll();
+      }
+    });
+
+    socket.on("word_played",d=>showToast(d.player+": /"+d.word+"/ +"+d.score+"pts","ok"));
+    socket.on("player_passed",d=>showToast(d.player+" passed.","info"));
+    socket.on("tiles_replaced",d=>showToast(d.player+" replaced "+d.count+" tile(s).","info"));
+    socket.on("turn_skipped",d=>showToast(d.player+"'s turn skipped.","info"));
+
+    socket.on("game_over",d=>{
+      const rows=d.final_scores.map((p,i)=>
+        "<div style='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #2a2f36;"+(i===0?"color:#c9a227;font-weight:bold":"")+"'>"+
+        "<span>"+(i===0?"🥇":i===1?"🥈":"🥉")+" "+p.name+"</span><span>"+p.score+" pts</span></div>"
+      ).join("");
+      showInfo("🏆 "+d.winner+" Wins!",rows,"New Game",()=>location.reload());
+    });
+
+    if(roomCode){
+      socket.emit("join_room_game",{name:playerName,room_id:roomCode});
+    }else{
+      socket.emit("create_room",{name:playerName});
     }
-    if(d.players) d.players.forEach((p,i)=>{ if(G.players[i]) G.players[i].score=p.score; });
-    G.ci = d.current_turn;
-    renderBoard(); renderSB();
-    const pill=document.getElementById('turnPill');
-    if(pill) pill.textContent='Turn '+d.turn_number+' — '+G.players[G.ci].name;
-    const bag=document.querySelector('.bag-info');
-    if(bag) bag.textContent='🎴 '+d.bag_count+' in bag';
   });
-
-  socket.on('your_hand', d=>{
-    if(d.player_index===MP.playerIndex && G.players[d.player_index]){
-      G.players[d.player_index].hand = d.hand;
-      if(G.ci===MP.playerIndex) renderRack();
-    }
-  });
-
-  socket.on('your_turn', d=>{
-    if(d.player_index===MP.playerIndex){
-      G.ci = MP.playerIndex;
-      showToast('Your turn!','ok');
-      renderAll();
-    }
-  });
-
-  socket.on('word_played', d=>showToast(d.player+': /'+d.word+'/ +'+d.score+'pts','ok'));
-  socket.on('player_passed', d=>showToast(d.player+' passed.','info'));
-  socket.on('tiles_replaced', d=>showToast(d.player+' replaced '+d.count+' tile(s).','info'));
-
-  socket.on('game_over', d=>{
-    const rows=d.final_scores.map((p,i)=>
-      '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #2a2f36;'+(i===0?'color:#c9a227;font-weight:bold':'')+'">'+
-      '<span>'+(i===0?'🥇':i===1?'🥈':'🥉')+' '+p.name+'</span><span>'+p.score+' pts</span></div>'
-    ).join('');
-    showInfo('🏆 '+d.winner+' Wins!', rows, 'New Game', ()=>location.reload());
-  });
-
-  // Connect to room
-  if(roomCode){
-    socket.emit('join_room_game',{name:playerName, room_id:roomCode});
-  } else {
-    socket.emit('create_room',{name:playerName});
-  }
-  }); // end loadSocketIO
 }
 
 // ============================================================
@@ -520,13 +516,13 @@ function updateFields(){
 }
 
 function startGame(){
-  try{
-  const mode = document.getElementById('mpMode')?.value||'local';
-  if(mode==='online'){
-    const serverUrl = document.getElementById('mpServer').value.trim()||window.location.origin;
-    const roomCode  = document.getElementById('mpRoom').value.trim().toUpperCase();
-    const name      = document.getElementById('pn0')?.value.trim()||'Player 1';
-    initMP(serverUrl, roomCode, name);
+  const mode=document.getElementById("mpMode")?.value||"local";
+  if(mode==="online"){
+    const serverUrl=document.getElementById("mpServer").value.trim()||window.location.origin;
+    const roomCode=document.getElementById("mpRoom").value.trim().toUpperCase();
+    const name=document.getElementById("pn0")?.value.trim()||"Player 1";
+    MP.active=true;
+    initMP(serverUrl,roomCode,name);
     return;
   }
   const n=+document.getElementById("numPlayers").value;
@@ -549,7 +545,6 @@ function startGame(){
     buildUI();renderAll();
     if(G.players[G.ci].isAI)aiTurn();
   });
-  } catch(e){ showToast('Error: '+e.message,'err'); console.error(e); }
 }
 
 // ─── BUILD UI ─────────────────────────────────────────────────
@@ -677,24 +672,21 @@ function renderBoard(){
 
     div.addEventListener("click",()=>onCell(r,c));
     div.addEventListener("dragover",e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      const selTile = G.dragIdx>=0 ? G.players[G.ci].hand[G.dragIdx] : null;
-      if(selTile){
-        const bc = G.board[r][c];
-        if(selTile.type==='D' && bc && bc.symbol) div.classList.add('drop-diac');
-        else if(selTile.type!=='D' && !(bc && bc.symbol)) div.classList.add('drop-ok');
+      e.preventDefault();e.stopPropagation();
+      const st=G.dragIdx>=0?G.players[G.ci].hand[G.dragIdx]:null;
+      if(st){
+        const bc=G.board[r][c];
+        if(st.type==="D"&&bc&&bc.symbol)div.classList.add("drop-diac");
+        else if(st.type!=="D"&&!(bc&&bc.symbol))div.classList.add("drop-ok");
       }
     });
     div.addEventListener("dragleave",e=>{
-      if(!div.contains(e.relatedTarget)){
-        div.classList.remove('drop-ok','drop-diac');
-      }
+      if(!div.contains(e.relatedTarget))div.classList.remove("drop-ok","drop-diac");
     });
     div.addEventListener("drop",e=>{
       e.preventDefault();
-      div.classList.remove('drop-ok','drop-diac');
-      if(G.dragIdx>=0){ G.si=G.dragIdx; onCell(r,c); G.dragIdx=-1; }
+      div.classList.remove("drop-ok","drop-diac");
+      if(G.dragIdx>=0){G.si=G.dragIdx;onCell(r,c);G.dragIdx=-1;}
     });
     el.appendChild(div);
   }
@@ -717,14 +709,13 @@ function renderRack(){
     if(myTurn){
       div.draggable=true;
       div.addEventListener("dragstart",e=>{
-        G.dragIdx=i; G.si=i;
-        div.classList.add("drag");
+        G.dragIdx=i;G.si=i;div.classList.add("drag");
         e.dataTransfer.effectAllowed="move";
-        e.dataTransfer.setData("text/plain", String(i));
+        e.dataTransfer.setData("text/plain",String(i));
       });
       div.addEventListener("dragend",()=>{
         div.classList.remove("drag");
-        document.querySelectorAll('.drop-ok,.drop-diac').forEach(el=>el.classList.remove('drop-ok','drop-diac'));
+        document.querySelectorAll(".drop-ok,.drop-diac").forEach(el=>el.classList.remove("drop-ok","drop-diac"));
         G.dragIdx=-1;
       });
       div.addEventListener("click",()=>onTile(i));
@@ -885,8 +876,8 @@ function doChallenge(ch){
 }
 
 function finalise(ws,total,pset){
-  if(MP.active && socket){
-    socket.emit('submit_word',{room_id:MP.roomId,player_index:MP.playerIndex});
+  if(MP.active&&socket){
+    socket.emit("submit_word",{room_id:MP.roomId,player_index:MP.playerIndex});
     G.placed=[];
     return;
   }
@@ -910,8 +901,8 @@ function rollback(){
 function doPass(){
   if(G.players[G.ci].isAI)return;
   if(G.placed.length){showToast("Undo tiles first.","err");return;}
-  if(MP.active && socket){
-    socket.emit('pass_turn',{room_id:MP.roomId,player_index:MP.playerIndex});
+  if(MP.active&&socket){
+    socket.emit("pass_turn",{room_id:MP.roomId,player_index:MP.playerIndex});
     return;
   }
   G.hist.push({tn:G.tn,player:G.players[G.ci].name,word:"pass",score:""});
