@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#c9a227">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="JEREMI">
 <title>JEREMI</title>
 <style>
 :root {
@@ -150,20 +155,20 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
         <option value="hard">AI — Hard</option>
       </select></div>
     <div class="setup-field">
-      <label>Multiplayer Mode</label>
+      <label>Game Mode</label>
       <select id="mpMode" onchange="toggleMP()">
-        <option value="local">Local / Same Device</option>
+        <option value="local">Local / AI (same device)</option>
         <option value="online">Online Multiplayer (different devices)</option>
       </select>
     </div>
-    <div id="mpFields" style="display:none">
+    <div id="mpFields" style="display:none;margin-top:8px">
       <div class="setup-field">
         <label>Server URL</label>
-        <input type="text" id="mpServer" value="" placeholder="https://jeremi-wxd4.onrender.com">
+        <input type="text" id="mpServer" placeholder="https://jeremi-wxd4.onrender.com" style="width:100%">
       </div>
-      <div class="setup-field">
+      <div class="setup-field" style="margin-top:6px">
         <label>Room Code (leave blank to create new room)</label>
-        <input type="text" id="mpRoom" placeholder="e.g. ABC123" style="text-transform:uppercase;letter-spacing:3px">
+        <input type="text" id="mpRoom" placeholder="e.g. ABC123" style="text-transform:uppercase;letter-spacing:3px;width:100%">
       </div>
     </div>
     <div class="modal-btns">
@@ -194,12 +199,17 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
 
 <script src="/static/app.js"></script>
 <script>
-// Load Socket.IO only when needed for online play
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/sw.js').catch(e=>console.warn('SW:',e));
+  });
+}
 function loadSocketIO(cb){
-  if(window.io){ cb(); return; }
+  if(window.io){cb();return;}
   const s=document.createElement('script');
   s.src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js';
-  s.onload=cb; s.onerror=()=>{ console.warn('Socket.IO CDN failed'); cb(); };
+  s.onload=cb;
+  s.onerror=()=>{console.warn('Socket.IO CDN failed');cb();};
   document.head.appendChild(s);
 }
 </script>
