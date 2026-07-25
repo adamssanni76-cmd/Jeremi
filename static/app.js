@@ -1,3 +1,20 @@
+
+// ─── TOUCH SUPPORT (mobile) ──────────────────────────────────
+// On mobile, tap a rack tile to select it, then tap a board cell to place it
+function addTouchToRackTile(div, i){
+  div.addEventListener("touchend", e=>{
+    e.preventDefault();
+    selectTile(i);
+  }, {passive:false});
+}
+
+function addTouchToCell(div, r, c){
+  div.addEventListener("touchend", e=>{
+    e.preventDefault();
+    if(G.si>=0){ onCell(r,c); }
+  }, {passive:false});
+}
+
 // ─── MULTIPLAYER ─────────────────────────────────────────────
 let socket=null;
 let MP={active:false,roomId:null,playerIndex:null};
@@ -688,6 +705,7 @@ function renderBoard(){
       div.classList.remove("drop-ok","drop-diac");
       if(G.dragIdx>=0){G.si=G.dragIdx;onCell(r,c);G.dragIdx=-1;}
     });
+    addTouchToCell(div, r, c);
     el.appendChild(div);
   }
 }
