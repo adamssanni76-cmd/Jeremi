@@ -1,4 +1,59 @@
 
+// ─── MOBILE PANEL ────────────────────────────────────────────
+function isMobile(){ return window.innerWidth <= 900; }
+
+function updateMobilePanel(){
+  if(!isMobile()) return;
+  const panel = document.getElementById("bottomPanel");
+  if(!panel) return;
+  panel.style.display = "block";
+
+  // Score strip
+  const strip = document.getElementById("scoreStrip");
+  if(strip && G.players){
+    strip.innerHTML = G.players.map((p,i)=>
+      "<div class='sp"+(i===G.ci?" active":"")+"'>"+
+      (p.isAI?"🤖 ":"")+p.name+": "+p.score+"</div>"
+    ).join("");
+  }
+
+  // Mirror rack to mobile rack
+  const mRack = document.getElementById("mobileRack");
+  const desktopRack = document.getElementById("rack");
+  if(mRack && desktopRack){
+    mRack.innerHTML = desktopRack.innerHTML;
+    // Re-attach click handlers
+    mRack.querySelectorAll(".rtile").forEach((div,i)=>{
+      div.onclick = ()=>selectTile(i);
+      div.addEventListener("touchend",e=>{ e.preventDefault(); selectTile(i); },{passive:false});
+    });
+  }
+}
+
+// Patch renderAll/renderRack to also update mobile panel
+const _origRenderAll = typeof renderAll !== "undefined" ? renderAll : null;
+const _origRenderRack = typeof renderRack !== "undefined" ? renderRack : null;
+
+window.addEventListener("load",()=>{
+  // Override renderAll
+  if(typeof renderAll !== "undefined"){
+    const orig = renderAll;
+    window.renderAll = function(){
+      orig();
+      updateMobilePanel();
+    };
+  }
+  if(typeof renderRack !== "undefined"){
+    const origR = renderRack;
+    window.renderRack = function(){
+      origR();
+      updateMobilePanel();
+    };
+  }
+  window.addEventListener("resize", updateMobilePanel);
+});
+
+
 // ─── TOUCH SUPPORT (mobile) ──────────────────────────────────
 // On mobile, tap a rack tile to select it, then tap a board cell to place it
 function addTouchToRackTile(div, i){
