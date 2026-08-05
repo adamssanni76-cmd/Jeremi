@@ -130,133 +130,204 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
 /* ── SCRABBLE-STYLE MOBILE LAYOUT ───────────────────────── */
 @media(max-width: 900px){
 
-  /* Full screen layout */
-  body { overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
-
-  /* Top bar — turn info */
-  .topbar {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 10px;
-    background: #13131a;
-    border-bottom: 1px solid #2a2f36;
-    font-size: 0.8rem;
-    z-index: 10;
+  /* Reset body for full screen */
+  html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
   }
 
-  /* Board area — takes all available space, pannable/zoomable */
+  /* Game container - full screen flex column */
+  body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Board wrap - takes all remaining space, scrollable in BOTH directions */
   .board-wrap {
     flex: 1;
-    overflow: auto;
+    overflow: scroll !important;
     -webkit-overflow-scrolling: touch;
     background: #050508;
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-start;
     padding: 4px;
     touch-action: pan-x pan-y pinch-zoom;
+    min-height: 0; /* important for flex scroll */
   }
 
-  /* Board fixed size — user zooms in/out */
+  /* Board - fixed size so user can scroll/zoom */
   .board {
-    grid-template-columns: repeat(15, 36px);
-    grid-template-rows:    repeat(15, 36px);
-    gap: 2px;
+    grid-template-columns: repeat(15, 36px) !important;
+    grid-template-rows: repeat(15, 36px) !important;
+    gap: 2px !important;
     flex-shrink: 0;
+    width: max-content;
     touch-action: pan-x pan-y pinch-zoom;
   }
 
   .cell {
-    width: 36px;
-    height: 36px;
-    font-size: 8px;
-    touch-action: manipulation;
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 8px !important;
   }
 
   .board-tile {
-    width: 33px;
-    height: 33px;
-    font-size: 12px;
+    width: 33px !important;
+    height: 33px !important;
+    font-size: 12px !important;
   }
 
-  .board-tile .pts { font-size: 7px; }
+  .board-tile .pts { font-size: 7px !important; }
 
-  /* Sidebar hidden on mobile — use bottom panel instead */
+  /* Hide desktop sidebar */
   .sidebar { display: none !important; }
 
-  /* Bottom panel — fixed at bottom */
+  /* Bottom panel - fixed, never scrolls away */
   .bottom-panel {
     flex-shrink: 0;
     background: #13131a;
     border-top: 2px solid #2a2f36;
     z-index: 20;
-    max-height: 42vh;
-    overflow-y: auto;
+    width: 100%;
+    overflow: visible;
   }
 
-  /* Scoreboard strip */
+  /* Score strip */
   .score-strip {
     display: flex;
-    gap: 8px;
-    padding: 6px 10px;
+    gap: 6px;
+    padding: 4px 8px;
     border-bottom: 1px solid #2a2f36;
     overflow-x: auto;
-    font-size: 0.75rem;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.72rem;
+    flex-shrink: 0;
   }
 
   .score-strip .sp {
     white-space: nowrap;
-    padding: 3px 8px;
+    padding: 2px 8px;
     border-radius: 12px;
     background: #1a1a2a;
-    font-family: 'Cinzel', serif;
+    font-family: "Cinzel", serif;
   }
 
-  .score-strip .sp.active { background: rgba(201,162,39,0.2); color: #c9a227; }
+  .score-strip .sp.active {
+    background: rgba(201,162,39,0.2);
+    color: #c9a227;
+  }
 
-  /* Rack */
+  /* Rack - horizontal scroll */
   .rack {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 5px;
-    padding: 8px 10px;
-    justify-content: flex-start;
-    border-bottom: 1px solid #2a2f36;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
+    gap: 5px;
+    padding: 6px 8px;
+    border-bottom: 1px solid #2a2f36;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .rtile {
-    flex-shrink: 0;
-    width: 46px;
-    height: 54px;
-    font-size: 1.1rem;
+    flex-shrink: 0 !important;
+    width: 44px !important;
+    height: 52px !important;
+    font-size: 1rem !important;
     touch-action: manipulation;
     cursor: pointer;
   }
 
-  /* Action buttons */
+  /* Action buttons row */
   .actions {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 4px;
+    padding: 6px 8px;
+    overflow-x: auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .action-btn {
+    flex-shrink: 0;
+    min-width: 64px;
+    min-height: 38px;
+    font-size: 0.65rem;
+    padding: 6px 4px;
+    white-space: nowrap;
+  }
+
+  /* Desktop-only elements */
+  .desktop-only { display: none !important; }
+}
+
+/* ── LANDSCAPE SPECIFIC ─────────────────────────────────── */
+@media(max-width: 900px) and (orientation: landscape){
+
+  html, body {
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Side by side: board left, panel right */
+  body {
+    flex-direction: row !important;
+  }
+
+  .board-wrap {
+    flex: 1;
+    height: 100vh;
+    overflow: scroll;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Right panel in landscape */
+  .bottom-panel {
+    width: 160px !important;
+    flex-shrink: 0;
+    height: 100vh;
+    border-top: none !important;
+    border-left: 2px solid #2a2f36;
+    overflow-y: auto;
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 8px 10px;
+    flex-direction: column;
+  }
+
+  .score-strip {
+    flex-direction: column;
+    overflow-x: visible;
+    overflow-y: auto;
+  }
+
+  .rack {
+    flex-wrap: wrap !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    padding: 6px;
+    gap: 4px;
+  }
+
+  .rtile {
+    width: 38px !important;
+    height: 46px !important;
+    font-size: 0.9rem !important;
+  }
+
+  .actions {
+    flex-wrap: wrap !important;
+    overflow: visible !important;
+    padding: 6px;
   }
 
   .action-btn {
     flex: 1;
-    min-width: 70px;
-    min-height: 40px;
-    font-size: 0.7rem;
-    padding: 8px 4px;
+    min-width: 60px;
+    font-size: 0.6rem;
   }
-
-  /* Hide desktop nav elements */
-  .desktop-only { display: none !important; }
 }
-
 </style>
 </head>
 <body>
