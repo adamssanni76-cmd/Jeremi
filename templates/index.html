@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="/static/manifest.json">
 <meta name="theme-color" content="#c9a227">
 <link rel="apple-touch-icon" href="/static/icon-192.png">
@@ -127,41 +127,84 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
 
 
 
-/* ── SCRABBLE-STYLE MOBILE LAYOUT ───────────────────────── */
+/* ── FORCE LANDSCAPE + SCRABBLE LAYOUT ─────────────────── */
+
+/* Portrait warning overlay */
+#portrait-warning {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #0a0a0f;
+  z-index: 9999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px;
+}
+
+#portrait-warning h2 {
+  font-family: "Cinzel", serif;
+  color: #c9a227;
+  font-size: 1.4rem;
+  margin-bottom: 16px;
+}
+
+#portrait-warning p {
+  color: #8b9099;
+  font-size: 0.95rem;
+}
+
+#portrait-warning .rotate-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  animation: rotate-hint 2s ease-in-out infinite;
+}
+
+@keyframes rotate-hint {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(90deg); }
+}
+
 @media(max-width: 900px){
 
-  /* Reset body for full screen */
+  /* Show portrait warning when in portrait */
+  @media(orientation: portrait){
+    #portrait-warning { display: flex !important; }
+  }
+
   html, body {
-    height: 100%;
-    width: 100%;
+    height: 100vh;
+    width: 100vw;
     overflow: hidden;
     margin: 0;
     padding: 0;
+    background: #0a0a0f;
   }
 
-  /* Game container - full screen flex column */
+  /* Landscape layout: board left, panel right */
   body {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
   }
 
-  /* Board wrap - takes all remaining space, scrollable in BOTH directions */
+  /* Board area — left side, scrollable */
   .board-wrap {
     flex: 1;
-    overflow: scroll !important;
+    height: 100vh;
+    overflow: scroll;
     -webkit-overflow-scrolling: touch;
     background: #050508;
     padding: 4px;
     touch-action: pan-x pan-y pinch-zoom;
-    min-height: 0; /* important for flex scroll */
+    min-width: 0;
   }
 
-  /* Board - fixed size so user can scroll/zoom */
+  /* Board — fixed 36px cells */
   .board {
     grid-template-columns: repeat(15, 36px) !important;
-    grid-template-rows: repeat(15, 36px) !important;
+    grid-template-rows:    repeat(15, 36px) !important;
     gap: 2px !important;
-    flex-shrink: 0;
     width: max-content;
     touch-action: pan-x pan-y pinch-zoom;
   }
@@ -175,7 +218,7 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
   .board-tile {
     width: 33px !important;
     height: 33px !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
   }
 
   .board-tile .pts { font-size: 7px !important; }
@@ -183,150 +226,85 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
   /* Hide desktop sidebar */
   .sidebar { display: none !important; }
 
-  /* Bottom panel - fixed, never scrolls away */
+  /* Right panel */
   .bottom-panel {
+    width: 160px;
     flex-shrink: 0;
+    height: 100vh;
     background: #13131a;
-    border-top: 2px solid #2a2f36;
-    z-index: 20;
-    width: 100%;
-    overflow: visible;
+    border-left: 2px solid #2a2f36;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
-  /* Score strip */
+  /* Score strip - top of right panel */
   .score-strip {
-    display: flex;
-    gap: 6px;
-    padding: 4px 8px;
+    padding: 6px 8px;
     border-bottom: 1px solid #2a2f36;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    font-size: 0.72rem;
+    overflow-y: auto;
     flex-shrink: 0;
+    max-height: 30vh;
   }
 
   .score-strip .sp {
-    white-space: nowrap;
-    padding: 2px 8px;
-    border-radius: 12px;
+    display: block;
+    padding: 3px 6px;
+    margin-bottom: 3px;
+    border-radius: 8px;
     background: #1a1a2a;
+    font-size: 0.7rem;
     font-family: "Cinzel", serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .score-strip .sp.active {
-    background: rgba(201,162,39,0.2);
+    background: rgba(201,162,39,0.25);
     color: #c9a227;
   }
 
-  /* Rack - horizontal scroll */
+  /* Rack - middle of right panel */
   .rack {
+    flex: 1;
     display: flex !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    padding: 6px !important;
+    overflow-y: auto;
+    align-content: flex-start;
     -webkit-overflow-scrolling: touch;
-    gap: 5px;
-    padding: 6px 8px;
-    border-bottom: 1px solid #2a2f36;
-    width: 100%;
-    box-sizing: border-box;
   }
 
   .rtile {
     flex-shrink: 0 !important;
-    width: 44px !important;
-    height: 52px !important;
-    font-size: 1rem !important;
+    width: 42px !important;
+    height: 50px !important;
+    font-size: 0.95rem !important;
     touch-action: manipulation;
     cursor: pointer;
   }
 
-  /* Action buttons row */
+  /* Action buttons - bottom of right panel */
   .actions {
     display: flex !important;
-    flex-wrap: nowrap !important;
-    gap: 4px;
-    padding: 6px 8px;
-    overflow-x: auto;
-    width: 100%;
-    box-sizing: border-box;
+    flex-direction: column !important;
+    gap: 4px !important;
+    padding: 6px !important;
+    flex-shrink: 0;
+    border-top: 1px solid #2a2f36;
   }
 
   .action-btn {
-    flex-shrink: 0;
-    min-width: 64px;
-    min-height: 38px;
-    font-size: 0.65rem;
-    padding: 6px 4px;
+    width: 100% !important;
+    min-height: 36px !important;
+    font-size: 0.65rem !important;
+    padding: 6px 4px !important;
     white-space: nowrap;
   }
 
-  /* Desktop-only elements */
   .desktop-only { display: none !important; }
-}
-
-/* ── LANDSCAPE SPECIFIC ─────────────────────────────────── */
-@media(max-width: 900px) and (orientation: landscape){
-
-  html, body {
-    height: 100vh;
-    overflow: hidden;
-  }
-
-  /* Side by side: board left, panel right */
-  body {
-    flex-direction: row !important;
-  }
-
-  .board-wrap {
-    flex: 1;
-    height: 100vh;
-    overflow: scroll;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Right panel in landscape */
-  .bottom-panel {
-    width: 160px !important;
-    flex-shrink: 0;
-    height: 100vh;
-    border-top: none !important;
-    border-left: 2px solid #2a2f36;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .score-strip {
-    flex-direction: column;
-    overflow-x: visible;
-    overflow-y: auto;
-  }
-
-  .rack {
-    flex-wrap: wrap !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    padding: 6px;
-    gap: 4px;
-  }
-
-  .rtile {
-    width: 38px !important;
-    height: 46px !important;
-    font-size: 0.9rem !important;
-  }
-
-  .actions {
-    flex-wrap: wrap !important;
-    overflow: visible !important;
-    padding: 6px;
-  }
-
-  .action-btn {
-    flex: 1;
-    min-width: 60px;
-    font-size: 0.6rem;
-  }
 }
 </style>
 </head>
