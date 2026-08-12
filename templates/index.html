@@ -127,9 +127,13 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
 
 
 
-/* ── FORCE LANDSCAPE + SCRABBLE LAYOUT ─────────────────── */
 
-/* Portrait warning overlay */
+/* ══════════════════════════════════════════
+   MOBILE — Landscape-only Scrabble layout
+   Targets actual buildUI() class names
+══════════════════════════════════════════ */
+
+/* Portrait: show rotate warning */
 #portrait-warning {
   display: none;
   position: fixed;
@@ -141,170 +145,174 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
   justify-content: center;
   text-align: center;
   padding: 40px;
+  gap: 16px;
 }
-
-#portrait-warning h2 {
-  font-family: "Cinzel", serif;
-  color: #c9a227;
-  font-size: 1.4rem;
-  margin-bottom: 16px;
-}
-
-#portrait-warning p {
-  color: #8b9099;
-  font-size: 0.95rem;
-}
-
-#portrait-warning .rotate-icon {
+#portrait-warning .ri {
   font-size: 4rem;
-  margin-bottom: 20px;
-  animation: rotate-hint 2s ease-in-out infinite;
+  animation: spin-hint 2s ease-in-out infinite;
+}
+@keyframes spin-hint {
+  0%,100%{transform:rotate(0deg)}
+  50%{transform:rotate(90deg)}
+}
+#portrait-warning h2 {
+  font-family:"Cinzel",serif;
+  color:#c9a227;
+  font-size:1.4rem;
+}
+#portrait-warning p { color:#8b9099; font-size:0.9rem; }
+
+@media(max-width:900px) and (orientation:portrait){
+  #portrait-warning { display:flex !important; }
+  #app { display:none !important; }
 }
 
-@keyframes rotate-hint {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(90deg); }
-}
+@media(max-width:900px) and (orientation:landscape){
 
-@media(max-width: 900px){
-
-  /* Show portrait warning when in portrait */
-  @media(orientation: portrait){
-    #portrait-warning { display: flex !important; }
+  /* Full screen */
+  html,body {
+    height:100vh; width:100vw;
+    overflow:hidden; margin:0; padding:0;
   }
 
-  html, body {
-    height: 100vh;
-    width: 100vw;
-    overflow: hidden;
-    margin: 0;
-    padding: 0;
-    background: #0a0a0f;
+  /* App container */
+  #app {
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    overflow:hidden;
   }
 
-  /* Landscape layout: board left, panel right */
-  body {
-    display: flex;
-    flex-direction: row;
+  /* Top bar — compact */
+  .topbar {
+    flex-shrink:0;
+    padding:4px 10px;
+    font-size:0.75rem;
+    min-height:36px;
   }
 
-  /* Board area — left side, scrollable */
-  .board-wrap {
-    flex: 1;
-    height: 100vh;
-    overflow: scroll;
-    -webkit-overflow-scrolling: touch;
-    background: #050508;
-    padding: 4px;
-    touch-action: pan-x pan-y pinch-zoom;
-    min-width: 0;
+  .topbar button {
+    font-size:0.65rem;
+    padding:3px 6px;
   }
 
-  /* Board — fixed 36px cells */
+  /* Main layout — board left, scores right */
+  .main-layout {
+    display:flex !important;
+    flex-direction:row !important;
+    flex:1;
+    min-height:0;
+    overflow:hidden;
+  }
+
+  /* Scoreboard — right side, compact */
+  .scoreboard {
+    width:120px !important;
+    flex-shrink:0;
+    overflow-y:auto;
+    font-size:0.7rem;
+    order:2;
+    border-left:1px solid #2a2f36;
+    padding:6px;
+  }
+
+  /* Word log — hide on mobile */
+  .word-log { display:none !important; }
+
+  /* Board outer — takes all space, scrollable */
+  .board-outer {
+    flex:1;
+    order:1;
+    overflow:scroll !important;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-x pan-y pinch-zoom;
+    background:#050508;
+    padding:4px;
+    min-width:0;
+    min-height:0;
+    position:relative;
+  }
+
+  /* JEREMI side label — hide */
+  .jeremi-side { display:none !important; }
+
+  /* Tile reference — hide */
+  .tile-ref { display:none !important; }
+
+  /* Board — fixed 34px cells */
   .board {
-    grid-template-columns: repeat(15, 36px) !important;
-    grid-template-rows:    repeat(15, 36px) !important;
-    gap: 2px !important;
-    width: max-content;
-    touch-action: pan-x pan-y pinch-zoom;
+    display:grid !important;
+    grid-template-columns:repeat(15,34px) !important;
+    grid-template-rows:repeat(15,34px) !important;
+    gap:2px !important;
+    width:max-content !important;
+    touch-action:pan-x pan-y pinch-zoom;
   }
 
   .cell {
-    width: 36px !important;
-    height: 36px !important;
-    font-size: 8px !important;
+    width:34px !important;
+    height:34px !important;
+    font-size:7px !important;
+    border-radius:2px !important;
   }
 
   .board-tile {
-    width: 33px !important;
-    height: 33px !important;
-    font-size: 11px !important;
+    width:31px !important;
+    height:31px !important;
+    font-size:11px !important;
   }
 
-  .board-tile .pts { font-size: 7px !important; }
+  .board-tile .pts { font-size:6px !important; }
 
-  /* Hide desktop sidebar */
-  .sidebar { display: none !important; }
-
-  /* Right panel */
-  .bottom-panel {
-    width: 160px;
-    flex-shrink: 0;
-    height: 100vh;
-    background: #13131a;
-    border-left: 2px solid #2a2f36;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+  /* Rack area — bottom strip */
+  .rack-area {
+    flex-shrink:0;
+    background:#13131a;
+    border-top:2px solid #2a2f36;
+    padding:4px 8px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    overflow:hidden;
   }
 
-  /* Score strip - top of right panel */
-  .score-strip {
-    padding: 6px 8px;
-    border-bottom: 1px solid #2a2f36;
-    overflow-y: auto;
-    flex-shrink: 0;
-    max-height: 30vh;
-  }
+  .rack-label { display:none !important; }
 
-  .score-strip .sp {
-    display: block;
-    padding: 3px 6px;
-    margin-bottom: 3px;
-    border-radius: 8px;
-    background: #1a1a2a;
-    font-size: 0.7rem;
-    font-family: "Cinzel", serif;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .score-strip .sp.active {
-    background: rgba(201,162,39,0.25);
-    color: #c9a227;
-  }
-
-  /* Rack - middle of right panel */
+  /* Rack — horizontal scroll */
   .rack {
-    flex: 1;
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 4px !important;
-    padding: 6px !important;
-    overflow-y: auto;
-    align-content: flex-start;
-    -webkit-overflow-scrolling: touch;
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    gap:4px !important;
+    overflow-x:auto !important;
+    -webkit-overflow-scrolling:touch;
+    flex-shrink:0;
+    max-width:55vw;
+    padding:2px;
   }
 
   .rtile {
-    flex-shrink: 0 !important;
-    width: 42px !important;
-    height: 50px !important;
-    font-size: 0.95rem !important;
-    touch-action: manipulation;
-    cursor: pointer;
+    flex-shrink:0 !important;
+    width:40px !important;
+    height:48px !important;
+    font-size:0.9rem !important;
+    touch-action:manipulation;
   }
 
-  /* Action buttons - bottom of right panel */
-  .actions {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 4px !important;
-    padding: 6px !important;
-    flex-shrink: 0;
-    border-top: 1px solid #2a2f36;
+  /* Action buttons — horizontal row */
+  .action-row {
+    display:flex !important;
+    flex-direction:column !important;
+    gap:3px !important;
+    flex-shrink:0;
   }
 
-  .action-btn {
-    width: 100% !important;
-    min-height: 36px !important;
-    font-size: 0.65rem !important;
-    padding: 6px 4px !important;
-    white-space: nowrap;
+  .action-row .btn {
+    min-height:32px !important;
+    font-size:0.6rem !important;
+    padding:4px 6px !important;
+    white-space:nowrap;
+    width:70px;
   }
-
-  .desktop-only { display: none !important; }
 }
 </style>
 </head>
