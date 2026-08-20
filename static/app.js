@@ -128,6 +128,10 @@ function initMP(serverUrl,roomCode,playerName){
       G.bht=false; G.placed=[]; G.hist=[]; G.tn=1;
       buildUI();renderAll();
       showToast(d.first+" goes first!","info");
+      // Request our hand from server
+      setTimeout(()=>{
+        socket.emit("request_hand",{room_id:MP.roomId,player_index:MP.playerIndex});
+      }, 500);
     });
 
     socket.on("game_state",d=>{
@@ -139,17 +143,24 @@ function initMP(serverUrl,roomCode,playerName){
       }
       if(d.players)d.players.forEach((p,i)=>{if(G.players[i])G.players[i].score=p.score;});
       G.ci=d.current_turn;
-      renderBoard();renderSB();
+      renderBoard();renderSB();renderRack();
       const pill=document.getElementById("turnPill");
       if(pill)pill.textContent="Turn "+d.turn_number+" — "+G.players[G.ci].name;
       const bag=document.querySelector(".bag-info");
       if(bag)bag.textContent="🎴 "+d.bag_count+" in bag";
+      // Show/hide action buttons based on whose turn it is
+      const actions=document.querySelector(".action-row")||document.querySelector(".actions");
+      if(actions){
+        const isMyTurn=(G.ci===MP.playerIndex);
+        actions.style.opacity=isMyTurn?"1":"0.4";
+        actions.querySelectorAll("button").forEach(b=>b.disabled=!isMyTurn);
+      }
     });
 
     socket.on("your_hand",d=>{
       if(d.player_index===MP.playerIndex&&G.players[d.player_index]){
         G.players[d.player_index].hand=d.hand;
-        if(G.ci===MP.playerIndex)renderRack();
+        renderRack(); // always show rack regardless of whose turn
       }
     });
 
@@ -165,6 +176,19 @@ function initMP(serverUrl,roomCode,playerName){
     socket.on("player_passed",d=>showToast(d.player+" passed.","info"));
     socket.on("tiles_replaced",d=>showToast(d.player+" replaced "+d.count+" tile(s).","info"));
     socket.on("turn_skipped",d=>showToast(d.player+"'s turn skipped.","info"));
+
+    
+    socket.on("tile_placed", d=>{
+      // Immediately update board for all players
+      if(G.board && d.tile && d.tile.symbol){
+        G.board[d.row][d.col] = {
+          symbol: d.tile.symbol,
+          points: d.tile.points,
+          type:   d.tile.type
+        };
+        renderBoard();
+      }
+    });
 
     socket.on("game_over",d=>{
       const rows=d.final_scores.map((p,i)=>
@@ -833,7 +857,20 @@ function onCell(r,c){
   const tile=hand[G.si];if(!tile)return;
   const bc=G.board[r][c];
 
-  // DIACRITIC
+  // MULTIPLAYER — send to server, it will broadcast back to all players
+  if(MP.active&&socket){
+    if(tile.type==="D"){
+      if(!bc?.symbol){showToast("Tap an existing tile.","err");return;}
+    } else {
+      if(bc?.symbol){showToast("Square occupied.","err");return;}
+    }
+    socket.emit("place_tile",{room_id:MP.roomId,player_index:MP.playerIndex,tile_index:G.si,row:r,col:c});
+    G.si=-1;
+    document.querySelectorAll(".rtile.sel").forEach(el=>el.classList.remove("sel"));
+    return;
+  }
+
+  // DIACRITIC (local)
   if(tile.type==="D"){
     if(!bc?.symbol){showToast("Tap an existing tile.","err");return;}
     const envErr=diacEnv(tile.symbol,r,c);
@@ -846,7 +883,7 @@ function onCell(r,c){
     renderAll();return;
   }
 
-  // BASE TILE
+  // BASE TILE (local)
   if(bc?.symbol){showToast("Square occupied.","err");return;}
   const rp=G.placed.filter(p=>!p.isDiac&&!p.isBnd);
   if(!G.bht&&rp.length===0&&r!==SR){showToast("First tile must be on row 8 (★).","err");return;}
@@ -867,6 +904,10 @@ function onCell(r,c){
 function dropToRack(e){e.preventDefault();if(G.dragIdx>=0){undoLast();G.dragIdx=-1;}}
 
 function undoLast(){
+  if(MP.active&&socket){
+    socket.emit("undo_tile",{room_id:MP.roomId,player_index:MP.playerIndex});
+    return;
+  }
   if(!G.placed.length){showToast("Nothing to undo.");return;}
   const last=G.placed.pop();
   const hand=G.players[G.ci].hand;
