@@ -942,6 +942,13 @@ function showHint(){
 // ─── CONFIRM PLAY ─────────────────────────────────────────────
 function confirmPlay(){
   if(G.players[G.ci].isAI)return;
+
+  // MULTIPLAYER — let server validate, just submit
+  if(MP.active&&socket){
+    socket.emit("submit_word",{room_id:MP.roomId,player_index:MP.playerIndex});
+    return;
+  }
+
   const rp=G.placed.filter(p=>!p.isDiac&&!p.isBnd);
   if(!rp.length){showToast("Place at least one tile.","err");return;}
 
@@ -990,11 +997,8 @@ function doChallenge(ch){
 }
 
 function finalise(ws,total,pset){
-  if(MP.active&&socket){
-    socket.emit("submit_word",{room_id:MP.roomId,player_index:MP.playerIndex});
-    G.placed=[];
-    return;
-  }
+  // Local game only - MP is handled in confirmPlay
+  if(MP.active){return;}
   G.players[G.ci].score+=total;G.bht=true;
   G.hist.push({tn:G.tn,player:G.players[G.ci].name,word:ws,score:total});
   const needed=9-G.players[G.ci].hand.length;
