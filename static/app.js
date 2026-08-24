@@ -859,14 +859,15 @@ function onCell(r,c){
 
   // MULTIPLAYER — send to server, it will broadcast back to all players
   if(MP.active&&socket){
+    const hasSymbol = bc && bc.symbol && bc.type !== "bonus";
     if(tile.type==="D"){
-      if(!bc?.symbol){showToast("Tap an existing tile.","err");return;}
+      if(!hasSymbol){showToast("Tap an existing tile to apply diacritic.","err");return;}
     } else {
-      if(bc?.symbol){showToast("Square occupied.","err");return;}
+      if(hasSymbol){showToast("Square occupied.","err");return;}
     }
     socket.emit("place_tile",{room_id:MP.roomId,player_index:MP.playerIndex,tile_index:G.si,row:r,col:c});
     G.si=-1;
-    document.querySelectorAll(".rtile.sel").forEach(el=>el.classList.remove("sel"));
+    document.querySelectorAll(".rtile.sel,.rtile.selD").forEach(el=>el.classList.remove("sel","selD"));
     return;
   }
 
