@@ -9,7 +9,7 @@ from jeremi import (
     get_all_new_words, detect_processes,
     replenish_hand, withdraw_tiles,
     VOWELS, VALID_DIACRITIC_COMBOS, validate_diacritic,
-    determine_first_player, scale, VOWEL_TILE_COUNTS
+    determine_first_player
 )
 import unicodedata
 
@@ -50,8 +50,8 @@ def send_hand(room_id, idx):
     player = room["players"][idx]
     sid = room["sids"][idx]
     hand = [{"symbol": t.get("symbol") or "BLANK", "points": t["points"], "type": t["type"]} for t in player["hand"]]
+    # Send to specific player only (their private hand)
     socketio.emit("your_hand", {"hand": hand, "player_index": idx}, to=sid)
-    socketio.emit("your_hand", {"hand": hand, "player_index": idx}, room=room_id)
 
 @app.route("/")
 def index():
@@ -61,6 +61,15 @@ def index():
 def service_worker():
     from flask import send_from_directory
     return send_from_directory('static', 'sw.js', mimetype='application/javascript')
+
+@socketio.on("request_hand")
+def on_request_hand(data):
+    room_id = data.get("room_id")
+    pi = data.get("player_index")
+    if room_id not in rooms: return
+    room = rooms[room_id]
+    if pi is None or pi >= len(room["players"]): return
+    send_hand(room_id, pi)
 
 @socketio.on("create_room")
 def on_create(data):
@@ -120,34 +129,67 @@ def on_start(data):
 
 @socketio.on("place_tile")
 def on_place(data):
-    room_id, pi, ti, row, col = data["room_id"], data["player_index"], data["tile_index"], data["row"], data["col"]
+    room_id = data["room_id"]
+    pi  = data["player_index"]
+    row = data["row"]
+    col = data["col"]
     room = rooms.get(room_id)
     if not room or room["current_turn"] != pi:
         emit("error", {"msg": "Not your turn!"}); return
     player = room["players"][pi]
-    board = room["board"]
-    if ti < 0 or ti >= len(player["hand"]):
-        emit("error", {"msg": "Invalid tile."}); return
-    cell = board[row][col]
-    tile = copy.deepcopy(player["hand"][ti])
+    board  = room["board"]
+    cell   = board[row][col]
+
+    # Client can send tile directly (real-time sync) or tile_index
+    if "tile" in data and data["tile"]:
+        tile = copy.deepcopy(data["tile"])
+        # Remove from hand if matching
+        for i, t in enumerate(player["hand"]):
+            if t.get("symbol") == tile.get("symbol"):
+                player["hand"].pop(i); break
+    elif "tile_index" in data:
+        ti = data["tile_index"]
+        if ti < 0 or ti >= len(player["hand"]):
+            emit("error", {"msg": "Invalid tile."}); return
+        tile = copy.deepcopy(player["hand"][ti])
+        player["hand"].pop(ti)
+    else:
+        emit("error", {"msg": "No tile data."}); return
     if tile["type"] == "diacritic":
         if not isinstance(cell, dict) or "symbol" not in cell:
+            # tile was already popped — put it back
+            player["hand"].insert(ti if ti < len(player["hand"]) else len(player["hand"]), tile)
             emit("error", {"msg": "Diacritic must go on an existing tile!"}); return
         valid, reason = validate_diacritic(tile["symbol"], cell["symbol"], cell["type"], row, col, board)
-        if not valid: emit("error", {"msg": reason}); return
+        if not valid:
+            player["hand"].insert(ti if ti < len(player["hand"]) else len(player["hand"]), tile)
+            emit("error", {"msg": reason}); return
         cell["symbol"] = unicodedata.normalize("NFC", cell["symbol"] + tile["symbol"])
         cell["diacritic"] = tile["symbol"]
         cell["points"] += tile["points"]
-        player["hand"].pop(ti)
+        # tile already popped above — do NOT pop again
         room["placed_this_turn"].append({"tile": cell, "row": row, "col": col, "bonus": room["bonus_squares"].get((row,col)), "isDiac": True})
     else:
         if isinstance(cell, dict) and "symbol" in cell:
+            # tile already popped — put it back
+            player["hand"].insert(ti if ti < len(player["hand"]) else len(player["hand"]), tile)
             emit("error", {"msg": "Square already occupied!"}); return
         board[row][col] = tile
-        player["hand"].pop(ti)
+        # tile already popped above — do NOT pop again
         room["placed_this_turn"].append({"tile": tile, "row": row, "col": col, "bonus": room["bonus_squares"].get((row,col))})
+    # Broadcast to ALL players so board syncs in real-time
     broadcast_state(room_id)
+    # Send updated hand only to the player who placed
     send_hand(room_id, pi)
+    # Notify all players a tile was placed (for visual feedback)
+    # Get the actual cell content after modification
+    final_cell = board[row][col] if isinstance(board[row][col], dict) else tile
+    socketio.emit("tile_placed", {
+        "player_index": pi,
+        "row": row,
+        "col": col,
+        "tile": {"symbol": final_cell.get("symbol"), "points": final_cell.get("points"), "type": final_cell.get("type")}
+    }, room=room_id)
 
 @socketio.on("undo_tile")
 def on_undo(data):
