@@ -859,9 +859,11 @@ function onCell(r,c){
 
   // MULTIPLAYER — send to server, it will broadcast back to all players
   if(MP.active&&socket){
+    console.log("[DEBUG] onCell r="+r+" c="+c+" tile="+JSON.stringify(tile)+" bc="+JSON.stringify(bc));
     const hasSymbol = bc && bc.symbol && bc.type !== "bonus";
-    if(tile.type==="D"){
-      if(!hasSymbol){showToast("Tap an existing tile to apply diacritic.","err");return;}
+    console.log("[DEBUG] hasSymbol="+hasSymbol+" tile.type="+tile.type);
+    if(tile.type==="D"||tile.type==="diacritic"){
+      if(!hasSymbol){showToast("Tap an existing tile to apply diacritic. bc="+JSON.stringify(bc),"err");return;}
     } else {
       if(hasSymbol){showToast("Square occupied.","err");return;}
     }
@@ -872,7 +874,7 @@ function onCell(r,c){
   }
 
   // DIACRITIC (local)
-  if(tile.type==="D"){
+  if(tile.type==="D"||tile.type==="diacritic"){
     if(!bc?.symbol){showToast("Tap an existing tile.","err");return;}
     const envErr=diacEnv(tile.symbol,r,c);
     if(envErr){showToast(envErr,"err");return;}
