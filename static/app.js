@@ -174,7 +174,11 @@ function initMP(serverUrl,roomCode,playerName){
 
     socket.on("word_played",d=>showToast(d.player+": /"+d.word+"/ +"+d.score+"pts","ok"));
     socket.on("player_passed",d=>showToast(d.player+" passed.","info"));
-    socket.on("tiles_replaced",d=>showToast(d.player+" replaced "+d.count+" tile(s).","info"));
+    socket.on("tiles_replaced",d=>{
+      showToast(d.player+" replaced "+d.count+" tile(s).","info");
+      // your_hand event will follow from server with new tiles
+      // renderRack() will be called when your_hand arrives
+    });
     socket.on("turn_skipped",d=>showToast(d.player+"'s turn skipped.","info"));
 
     
@@ -1051,6 +1055,15 @@ function togRep(i){
 function confReplace(){
   if(!G.repSel.length){showToast("Select tiles.","err");return;}
   document.getElementById("ovInfo").classList.remove("show");
+
+  // MULTIPLAYER — send to server
+  if(MP.active&&socket){
+    const indices=[...G.repSel];
+    socket.emit("replace_tiles",{room_id:MP.roomId,player_index:MP.playerIndex,indices});
+    G.repSel=new Set();
+    return;
+  }
+
   const hand=G.players[G.ci].hand;
   const idxs=[...G.repSel].sort((a,b)=>b-a);
   const removed=idxs.map(i=>hand.splice(i,1)[0]);
