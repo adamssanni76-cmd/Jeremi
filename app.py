@@ -235,11 +235,31 @@ def on_submit(data):
     room["placed_this_turn"] = []
     room["consecutive_passes"] = 0
     room["history"].append({"turn": room["turn_number"], "player": player["name"], "word": f"/{word_str}/", "score": score})
-    socketio.emit("word_played", {
-        "player": player["name"], "word": word_str, "score": score,
-        "processes": ", ".join(sorted(set(procs))).replace("_"," ")
+
+    # Store pending play for challenge window
+    # Keep a snapshot of placed tiles for re-validation if challenged
+    placed_snapshot = [{"tile": dict(pt["tile"]), "row": pt["row"], "col": pt["col"],
+                        "bonus": pt.get("bonus"), "isDiac": pt.get("isDiac",False)}
+                       for pt in room["placed_this_turn_snapshot"]] if "placed_this_turn_snapshot" in room else []
+
+    room["pending_play"] = {
+        "player_index": pi,
+        "word": word_str,
+        "score": score,
+        "processes": ", ".join(sorted(set(procs))).replace("_"," "),
+        "challenges_received": {},
+        "num_other_players": len(room["players"]) - 1,
+        "placed_tiles": placed_snapshot,
+    }
+
+    # Broadcast challenge window to all OTHER players
+    socketio.emit("challenge_window", {
+        "player": player["name"],
+        "word": f"/{word_str}/",
+        "score": score,
+        "processes": ", ".join(sorted(set(procs))).replace("_"," "),
+        "player_index": pi,
     }, room=room_id)
-    _next_turn(room_id)
 
 @socketio.on("pass_turn")
 def on_pass(data):
@@ -271,6 +291,81 @@ def on_replace(data):
     socketio.emit("tiles_replaced", {"player": player["name"], "count": len(returned)}, room=room_id)
     send_hand(room_id, pi)
     _next_turn(room_id)
+
+@socketio.on("challenge_response")
+def on_challenge_response(data):
+    room_id      = data["room_id"]
+    pi           = data["player_index"]
+    challenged   = data["challenged"]  # True = challenge, False = accept
+    room         = rooms.get(room_id)
+    if not room or "pending_play" not in room: return
+
+    pending = room["pending_play"]
+    pending["challenges_received"][pi] = challenged
+
+    # Check if all other players have responded
+    if len(pending["challenges_received"]) >= pending["num_other_players"]:
+        # Check if anyone challenged
+        if any(pending["challenges_received"].values()):
+            acting_player = room["players"][pending["player_index"]]
+            challenger_idx = next(i for i,v in pending["challenges_received"].items() if v)
+            challenger = room["players"][challenger_idx]
+
+            # Re-validate the word using stored placed tiles
+            placed_snap = pending.get("placed_tiles", [])
+            word_valid = True
+            if placed_snap:
+                try:
+                    all_words = get_all_new_words(placed_snap, room["board"], room["bonus_squares"])
+                    for wt in all_words:
+                        valid, _ = validate_word(wt, room["board"])
+                        if not valid:
+                            word_valid = False
+                            break
+                except:
+                    word_valid = True  # give benefit of doubt
+
+            if not word_valid:
+                # Challenge UPHELD — word is invalid
+                acting_player["score"] -= pending["score"]
+                replenish_hand(acting_player, room["bag"])
+                challenger["score"] += 5  # bonus for correct challenge
+                socketio.emit("challenge_result", {
+                    "upheld": True,
+                    "challenger": challenger["name"],
+                    "player": acting_player["name"],
+                    "score_lost": pending["score"],
+                    "message": f"Challenge upheld! /{pending['word']}/ is invalid. "
+                               f"{acting_player['name']} loses {pending['score']} pts. "
+                               f"{challenger['name']} gets +5 pts."
+                }, room=room_id)
+            else:
+                # Challenge FAILED — word is valid, challenger penalised
+                challenger["skip_next"] = True
+                socketio.emit("challenge_result", {
+                    "upheld": False,
+                    "challenger": challenger["name"],
+                    "player": acting_player["name"],
+                    "word": f"/{pending['word']}/",
+                    "score": pending["score"],
+                    "message": f"Challenge failed! /{pending['word']}/ is valid. "
+                               f"{challenger['name']} loses their next turn."
+                }, room=room_id)
+        else:
+            # No challenge — word stands
+            socketio.emit("challenge_result", {
+                "upheld": False,
+                "player": room["players"][pending["player_index"]]["name"],
+                "word": f"/{pending['word']}/",
+                "score": pending["score"],
+                "processes": pending["processes"],
+                "message": "Word accepted!"
+            }, room=room_id)
+                # Clear pending and advance turn
+        del room["pending_play"]
+        broadcast_state(room_id)
+        _next_turn(room_id)
+
 
 def _next_turn(room_id):
     room = rooms[room_id]
