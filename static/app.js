@@ -78,6 +78,17 @@ window._startOnlineGame=function(){
   if(socket&&MP.roomId)socket.emit("start_game",{room_id:MP.roomId});
 };
 
+function sendChallenge(challenged){
+  document.getElementById("ovInfo").classList.remove("show");
+  if(socket&&MP.roomId!==null){
+    socket.emit("challenge_response",{
+      room_id: MP.roomId,
+      player_index: MP.playerIndex,
+      challenged: challenged
+    });
+  }
+}
+
 function toggleMP(){
   const m=document.getElementById("mpMode").value;
   document.getElementById("mpFields").style.display=m==="online"?"block":"none";
@@ -180,6 +191,41 @@ function initMP(serverUrl,roomCode,playerName){
       // renderRack() will be called when your_hand arrives
     });
     socket.on("turn_skipped",d=>showToast(d.player+"'s turn skipped.","info"));
+
+    socket.on("challenge_window",d=>{
+      const isActingPlayer = d.player_index===MP.playerIndex;
+      if(isActingPlayer){
+        // Show word played confirmation to acting player
+        showInfo("Word Submitted",
+          "<div style='text-align:center;font-size:22px;font-weight:bold;color:#c9a227;padding:8px 0'>"+d.word+"</div>"+
+          "<div style='text-align:center;font-size:26px;font-weight:bold'>"+d.score+" pts</div>"+
+          (d.processes?"<p style='color:#4cc97a;font-size:12px;text-align:center;margin-top:6px'>Process: "+d.processes+"</p>":"")+
+          "<p style='color:#8b9099;font-size:12px;text-align:center;margin-top:6px'>Waiting for other players to accept or challenge...</p>",
+          null, null);
+        document.getElementById("infoBtns").innerHTML="";
+      } else {
+        // Show challenge window to other players
+        showInfo("Challenge?",
+          "<div style='text-align:center;font-size:22px;font-weight:bold;color:#c9a227;padding:8px 0'>"+d.word+"</div>"+
+          "<div style='text-align:center;font-size:26px;font-weight:bold'>"+d.score+" pts</div>"+
+          "<p style='color:#8b9099;font-size:12px;text-align:center;margin-top:6px'>"+d.player+" played this word. Challenge or accept?</p>",
+          null, null);
+        document.getElementById("infoBtns").innerHTML=
+          "<button class='btn' style='background:#a33;color:#fff;margin-right:8px' onclick='sendChallenge(true)'>✗ Challenge</button>"+
+          "<button class='btn primary' onclick='sendChallenge(false)'>✓ Accept</button>";
+      }
+    });
+
+    socket.on("challenge_result",d=>{
+      document.getElementById("ovInfo").classList.remove("show");
+      const msg = d.message || "";
+      if(d.upheld){
+        const isChallenger = d.challenger===G.players[MP.playerIndex]?.name;
+        showToast(msg || "Challenge upheld! "+d.player+" loses "+d.score_lost+" pts.", isChallenger?"ok":"info");
+      } else {
+        showToast(msg || d.word+" accepted. +"+d.score+" pts.", "ok");
+      }
+    });
 
     
     socket.on("tile_placed", d=>{
