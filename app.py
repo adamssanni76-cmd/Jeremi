@@ -123,7 +123,11 @@ def on_start(data):
         "first": room["players"][0]["name"]
     }, room=room_id)
     broadcast_state(room_id)
-    for i in range(len(room["players"])): send_hand(room_id, i)
+    # Tell each player their updated index after reordering, then send hand
+    for i in range(len(room["players"])):
+        sid = room["sids"][i]
+        socketio.emit("your_index", {"player_index": i, "name": room["players"][i]["name"]}, to=sid)
+        send_hand(room_id, i)
     first_sid = room["sids"][0]
     socketio.emit("your_turn", {"player": room["players"][0]["name"], "player_index": 0}, to=first_sid)
 
