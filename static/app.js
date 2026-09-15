@@ -131,17 +131,24 @@ function initMP(serverUrl,roomCode,playerName){
       ).join("");
     });
 
+    socket.on("your_index",d=>{
+      MP.playerIndex = d.player_index;
+      console.log("[DEBUG] playerIndex updated to", MP.playerIndex, "name:", d.name);
+    });
+
     socket.on("game_started",d=>{
       document.getElementById("ovInfo").classList.remove("show");
       document.getElementById("ovSetup").classList.remove("show");
       G.players=d.players.map(name=>({name,score:0,hand:[],isAI:false}));
       G.ci=0; G.board=Array.from({length:15},()=>Array(15).fill(null));
       G.bht=false; G.placed=[]; G.hist=[]; G.tn=1;
+      G.started=true;
       buildUI();renderAll();
       showToast(d.first+" goes first!","info");
-      // Request our hand from server
       setTimeout(()=>{
         socket.emit("request_hand",{room_id:MP.roomId,player_index:MP.playerIndex});
+      }, 800);
+    });
       }, 500);
     });
 
