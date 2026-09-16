@@ -588,10 +588,31 @@ function genCands(hand){
 }
 
 function validStruct(syms){
+  if(!syms||!syms.length)return false;
+  const VOWELS_SET=new Set(["i","e","ɛ","a","ɔ","o","u","ɪ","ʊ"]);
+  const HIGH_V=new Set(["i","u"]);
+  const GLIDES_SET=new Set(["j","w"]);
+
+  // Check glide formation: high vowel /i/ or /u/ before another vowel is INVALID
+  // unless it is already a glide
+  for(let k=0;k<syms.length-1;k++){
+    if(HIGH_V.has(syms[k])&&VOWELS_SET.has(syms[k+1])){
+      return false; // should be j or w
+    }
+    // Also no two consecutive vowels (vowel hiatus)
+    if(VOWELS_SET.has(syms[k])&&VOWELS_SET.has(syms[k+1])&&
+       !HIGH_V.has(syms[k])){
+      return false;
+    }
+  }
+
   let root=[...syms];
-  if(root[0]==="i"&&root.length>1)root=root.slice(1);
+  // Strip negation prefix /i/
+  if(root[0]==="i"&&root.length>1&&!VOWELS_SET.has(root[1]))root=root.slice(1);
+  // Strip progressive suffix /nɛ/
   if(root.length>=2&&root[root.length-2]==="n"&&root[root.length-1]==="ɛ")root=root.slice(0,-2);
   if(!root.length)return false;
+
   const sl=splitSyl(root);
   return sl!==null&&sl.length<=3;
 }
