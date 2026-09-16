@@ -162,6 +162,7 @@ function initMP(serverUrl,roomCode,playerName){
       }
       if(d.players)d.players.forEach((p,i)=>{if(G.players[i])G.players[i].score=p.score;});
       G.ci=d.current_turn;
+      G.tn=d.turn_number||G.tn;
       renderBoard();renderSB();renderRack();
       const pill=document.getElementById("turnPill");
       if(pill)pill.textContent="Turn "+d.turn_number+" — "+G.players[G.ci].name;
@@ -191,7 +192,18 @@ function initMP(serverUrl,roomCode,playerName){
       }
     });
 
-    socket.on("word_played",d=>showToast(d.player+": /"+d.word+"/ +"+d.score+"pts","ok"));
+    socket.on("word_played",d=>{
+      showToast(d.player+": /"+d.word+"/ +"+d.score+"pts","ok");
+      // Add to word log
+      G.hist.push({
+        word: d.word,
+        player: d.player,
+        tn: G.tn || 1,
+        score: d.score,
+        processes: d.processes || ""
+      });
+      renderLog();
+    });
     socket.on("player_passed",d=>showToast(d.player+" passed.","info"));
     socket.on("tiles_replaced",d=>{
       showToast(d.player+" replaced "+d.count+" tile(s).","info");
@@ -916,6 +928,7 @@ function renderLog(){
     <div class="log-entry">
       <div class="log-word">/${h.word}/</div>
       <div class="log-meta">${h.player} · T${h.tn}${h.score?" · +"+h.score+"pts":""}</div>
+      ${h.processes?`<div class="log-proc">${h.processes}</div>`:""}
     </div>`).join(""):`<div style="color:var(--muted);font-size:11px;padding:6px">No words yet</div>`;
 }
 
