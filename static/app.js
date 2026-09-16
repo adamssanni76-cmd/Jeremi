@@ -152,8 +152,6 @@ function initMP(serverUrl,roomCode,playerName){
         socket.emit("request_hand",{room_id:MP.roomId,player_index:MP.playerIndex});
       }, 800);
     });
-      }, 500);
-    });
 
     socket.on("game_state",d=>{
       if(d.board){
