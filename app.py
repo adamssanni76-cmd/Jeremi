@@ -330,21 +330,23 @@ def on_challenge_response(data):
                     word_valid = True  # give benefit of doubt
 
             if not word_valid:
-                # Challenge UPHELD — word is invalid
+                # Challenge UPHELD — player is wrong
+                # Player withdraws tiles, score deducted, loses next turn
                 acting_player["score"] -= pending["score"]
+                acting_player["skip_next"] = True
                 replenish_hand(acting_player, room["bag"])
-                challenger["score"] += 5  # bonus for correct challenge
                 socketio.emit("challenge_result", {
                     "upheld": True,
                     "challenger": challenger["name"],
                     "player": acting_player["name"],
                     "score_lost": pending["score"],
                     "message": f"Challenge upheld! /{pending['word']}/ is invalid. "
-                               f"{acting_player['name']} loses {pending['score']} pts. "
-                               f"{challenger['name']} gets +5 pts."
+                               f"{acting_player['name']} loses {pending['score']} pts and next turn."
                 }, room=room_id)
             else:
-                # Challenge FAILED — word is valid, challenger penalised
+                # Challenge FAILED — challenger is wrong
+                # Challenger's score deducted by the word's score, loses next turn
+                challenger["score"] -= pending["score"]
                 challenger["skip_next"] = True
                 socketio.emit("challenge_result", {
                     "upheld": False,
@@ -353,7 +355,7 @@ def on_challenge_response(data):
                     "word": f"/{pending['word']}/",
                     "score": pending["score"],
                     "message": f"Challenge failed! /{pending['word']}/ is valid. "
-                               f"{challenger['name']} loses their next turn."
+                               f"{challenger['name']} loses {pending['score']} pts and next turn."
                 }, room=room_id)
         else:
             # No challenge — word stands
