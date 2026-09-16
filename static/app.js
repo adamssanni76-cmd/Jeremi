@@ -90,11 +90,14 @@ function sendChallenge(challenged){
 }
 
 function toggleMP(){
-  const m=document.getElementById("mpMode").value;
-  document.getElementById("mpFields").style.display=m==="online"?"block":"none";
+  const modeEl=document.getElementById("mpMode");
+  const fieldsEl=document.getElementById("mpFields");
+  if(!modeEl||!fieldsEl) return;
+  const m=modeEl.value;
+  fieldsEl.style.display=m==="online"?"block":"none";
   if(m==="online"){
     const s=document.getElementById("mpServer");
-    if(!s.value)s.value=window.location.origin;
+    if(s&&!s.value)s.value=window.location.origin;
   }
 }
 
@@ -1231,5 +1234,12 @@ function showToast(msg,type){
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=~~(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 
 // ─── INIT ────────────────────────────────────────────────────
-updateFields();
-window.addEventListener("resize",()=>{if(G.board)renderAll();});
+function init(){
+  try{ updateFields(); }catch(e){ console.warn("updateFields error:", e); }
+  window.addEventListener("resize",()=>{if(G.board)renderAll();});
+}
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
