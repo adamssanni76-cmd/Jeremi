@@ -1044,8 +1044,38 @@ function confirmPlay(){
     return;
   }
 
-  const rp=G.placed.filter(p=>!p.isDiac&&!p.isBnd);
-  if(!rp.length){showToast("Place at least one tile.","err");return;}
+  const rp=G.placed.filter(p=>!p.isDiac&&!p.isBnd);  // base tiles only
+  const dp=G.placed.filter(p=>p.isDiac);              // diacritic tiles
+  const allp=G.placed.filter(p=>!p.isBnd);            // all placed (base + diac)
+
+  // Must have placed at least one tile (base OR diacritic)
+  if(!allp.length){showToast("Place at least one tile.","err");return;}
+
+  // If ONLY diacritics placed — find the word from diacritic position and score it
+  if(!rp.length && dp.length){
+    const diacPos=dp[0];
+    const wordH=getConn(diacPos.row,diacPos.col,"h");
+    const wordV=getConn(diacPos.row,diacPos.col,"v");
+    const word=wordH.length>=wordV.length?wordH:wordV;
+    if(word.length<1){showToast("Diacritic must be on a tile that forms a word.","err");return;}
+    const ws=word.filter(t=>t.type!=="boundary").map(t=>t.symbol).join("");
+    const pset=new Set(dp.map(p=>`${p.row},${p.col}`));
+    const total=scoreTiles(word,pset);
+    const res=validateWord(word);
+    if(!res.ok){G.placed=[];showToast("❌ "+res.r,"err");return;}
+    const ni=(G.ci+1)%G.players.length;
+    if(G.players[ni].isAI){finalise(ws,total,pset);return;}
+    showInfo("Challenge?",
+      `<div style="text-align:center;font-size:22px;font-weight:bold;color:#c9a227;padding:8px 0">/${ws}/</div>
+      <div style="text-align:center;font-size:26px;font-weight:bold">${total} pts</div>
+      <p style="color:#8b9099;font-size:12px;margin-top:6px">${G.players[ni].name}: challenge or accept?</p>`,
+      null,null);
+    document.getElementById("infoBtns").innerHTML=`
+      <button class="btn" style="background:#a33;color:#fff" onclick="doChallenge(true)">✗ Challenge</button>
+      <button class="btn primary" onclick="doChallenge(false)">✓ Accept</button>`;
+    window._pp={ws,total,pset};
+    return;
+  }
 
   if(!G.bht&&!rp.some(p=>p.row===SR&&p.col===SC)){showToast("First word must cover ★ (R8 C1).","err");return;}
 
