@@ -233,12 +233,18 @@ def on_submit(data):
     if len([p for p in placed if not p.get("isDiac")]) == 9: score += 30
     player["score"] += score
     replenish_hand(player, room["bag"])
-    word_str = "".join(pt["tile"]["symbol"] for pt in placed if pt["tile"].get("type") != "boundary" and not pt.get("isDiac"))
+    # Build word strings for ALL words formed (main + side words)
+    all_word_strs = []
+    for wt in all_words:
+        ws = "".join(t["tile"]["symbol"] for t in wt if t["tile"].get("type") != "boundary")
+        if ws:
+            all_word_strs.append(f"/{ws}/")
+    word_str = " + ".join(all_word_strs) if all_word_strs else ""
     procs = []
     for wt in all_words: procs.extend(detect_processes(wt, board))
     room["placed_this_turn"] = []
     room["consecutive_passes"] = 0
-    room["history"].append({"turn": room["turn_number"], "player": player["name"], "word": f"/{word_str}/", "score": score})
+    room["history"].append({"turn": room["turn_number"], "player": player["name"], "word": word_str, "score": score})
 
     # Store pending play for challenge window
     # Keep a snapshot of placed tiles for re-validation if challenged
@@ -249,6 +255,7 @@ def on_submit(data):
     room["pending_play"] = {
         "player_index": pi,
         "word": word_str,
+        "words": all_word_strs,
         "score": score,
         "processes": ", ".join(sorted(set(procs))).replace("_"," "),
         "challenges_received": {},
@@ -256,10 +263,12 @@ def on_submit(data):
         "placed_tiles": placed_snapshot,
     }
 
-    # Broadcast challenge window to all OTHER players
+    # Broadcast challenge window to all players
+    # word_played fires after challenge is resolved (see on_challenge_response)
     socketio.emit("challenge_window", {
         "player": player["name"],
-        "word": f"/{word_str}/",
+        "word": word_str,
+        "words": all_word_strs,
         "score": score,
         "processes": ", ".join(sorted(set(procs))).replace("_"," "),
         "player_index": pi,
@@ -362,12 +371,47 @@ def on_challenge_response(data):
             socketio.emit("challenge_result", {
                 "upheld": False,
                 "player": room["players"][pending["player_index"]]["name"],
-                "word": f"/{pending['word']}/",
+                "word": pending["word"],
+                "words": pending.get("words", [pending["word"]]),
                 "score": pending["score"],
                 "processes": pending["processes"],
                 "message": "Word accepted!"
             }, room=room_id)
-                # Clear pending and advance turn
+
+        # If word was NOT upheld (word stands), emit word_played for log
+        if not any(pending["challenges_received"].values()) or \
+           (any(pending["challenges_received"].values()) and True):  # always emit result
+            pass  # challenge_result handles display
+
+        # Emit word_played so word log updates on all clients
+        if not (any(pending["challenges_received"].values()) and True):
+            pass
+        # Always emit word_played for the log when word stands
+        pending_word_valid = True
+        if any(pending["challenges_received"].values()):
+            # Re-check if upheld
+            placed_snap = pending.get("placed_tiles", [])
+            if placed_snap:
+                try:
+                    aw = get_all_new_words(placed_snap, room["board"], room["bonus_squares"])
+                    for wt in aw:
+                        v, _ = validate_word(wt, room["board"])
+                        if not v:
+                            pending_word_valid = False
+                            break
+                except:
+                    pending_word_valid = True
+
+        if pending_word_valid:
+            socketio.emit("word_played", {
+                "player": room["players"][pending["player_index"]]["name"],
+                "word": pending["word"],
+                "words": pending.get("words", [pending["word"]]),
+                "score": pending["score"],
+                "processes": pending["processes"],
+            }, room=room_id)
+
+        # Clear pending and advance turn
         del room["pending_play"]
         broadcast_state(room_id)
         _next_turn(room_id)
