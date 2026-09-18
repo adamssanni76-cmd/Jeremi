@@ -1149,34 +1149,152 @@ def get_adjacent_symbols(board, row, col):
 
 
 def validate_diacritic(diacritic, base_symbol, base_type, row, col, board):
-    combined = unicodedata.normalize("NFC", base_symbol + diacritic)
+    """
+    Validate diacritic placement based on phonological environment.
+    Environment (adjacent sounds) determines validity for all 10 diacritics.
+    Based on JEREMI manual: each process occurs in a specific phonological environment.
+    """
     adjacent = get_adjacent_symbols(board, row, col)
     adj_syms = [s for s, r, c in adjacent]
+    VOWELS_SET = VOWELS
+    SONORANTS  = NASALS | {"l", "r", "ʋ"}
 
-    if combined not in VALID_DIACRITIC_COMBOS:
-        valid_bases = [c.replace(diacritic, '') for c in VALID_DIACRITIC_COMBOS
-                       if c.endswith(diacritic)]
-        return False, (f"'{combined}' is not a valid combination. "
-                       f"'{diacritic}' can only be applied to: {', '.join(sorted(valid_bases))}")
-
+    # ── 1. NASALISATION (̃) ──────────────────────────────────────────
+    # Environment: non-nasal sound (especially vowels) adjacent to a nasal
+    # Any vowel adjacent to a nasal can be nasalised
+    # Nasals themselves can also take the diacritic
     if diacritic == "̃":
-        if not any(s in NASALS for s in adj_syms):
-            return False, "Nasalisation requires an adjacent nasal sound."
+        if base_type == "base_vowel":
+            # Vowel nasalisation — requires adjacent nasal
+            if not any(s in NASALS for s in adj_syms):
+                return False, ("Nasalisation (̃) requires the vowel to be adjacent "
+                               "to a nasal sound /m, n, ɲ, ŋ, ɴ/.")
+        elif base_symbol in NASALS:
+            # Nasal can always be marked as nasalised (it is already nasal)
+            pass
+        else:
+            return False, f"Nasalisation (̃) applies to vowels and nasals, not '{base_symbol}'."
+
+    # ── 2. ELISION (ø) ───────────────────────────────────────────────
+    # Environment: last vowel of preceding word OR first vowel of next word
+    # when two words combine. Requires adjacent vowel (across morpheme boundary)
+    elif diacritic == "ø":
+        if base_type != "base_vowel":
+            return False, f"Elision (ø) applies to vowels only, not '{base_symbol}'."
+        # Must be adjacent to another vowel or a word boundary marker
+        has_adj_vowel = any(s in VOWELS_SET for s in adj_syms)
+        has_boundary  = any(
+            isinstance(board[r][c], dict) and board[r][c].get("type") == "boundary"
+            for s, r, c in adjacent
+        )
+        if not (has_adj_vowel or has_boundary):
+            return False, ("Elision (ø) requires the vowel to be adjacent to another vowel "
+                           "or a word boundary [#], indicating two words combining.")
+
+    # ── 4. LABIALISATION (ʷ) ─────────────────────────────────────────
+    # Environment: any consonant that precedes rounded vowels /u, o, ɔ/
+    # A sound takes on a round lip feature when it precedes /u, o, ɔ/
     elif diacritic == "ʷ":
+        if base_type != "base_consonant":
+            return False, f"Labialisation (ʷ) applies to consonants only, not '{base_symbol}'."
         if not any(s in ROUNDED_VOWELS for s in adj_syms):
-            return False, "Labialisation (ʷ) requires the consonant to precede /u, o, ɔ/."
+            return False, ("Labialisation (ʷ) requires the consonant to precede "
+                           "a rounded vowel /u, o, ɔ/.")
+
+    # ── 5. PALATALISATION (ʲ) ────────────────────────────────────────
+    # Environment: non-sonorant consonant before high front vowels /i/ or /e/
+    # Addition of [i] colouring to a non-sonorant sound before /i/ and /e/
     elif diacritic == "ʲ":
+        if base_type != "base_consonant":
+            return False, f"Palatalisation (ʲ) applies to consonants only, not '{base_symbol}'."
+        if base_symbol in SONORANTS:
+            return False, (f"Palatalisation (ʲ) applies to non-sonorant consonants only. "
+                           f"'{base_symbol}' is a sonorant.")
         if not any(s in FRONT_HIGH_VOWELS for s in adj_syms):
-            return False, "Palatalisation (ʲ) requires the consonant to precede /i/ or /e/."
-    elif diacritic == "ˤ":
-        if not any(s in PHARYNGEALS for s in adj_syms):
-            return False, "Pharyngealisation (ˤ) requires an adjacent pharyngeal /ħ/ or /ʕ/."
+            return False, ("Palatalisation (ʲ) requires the consonant to precede "
+                           "a high front vowel /i/ or /e/.")
+
+    # ── 6. VOICING (ˬ) ───────────────────────────────────────────────
+    # Environment: non-music-like (obstruent) consonant between two vowels
+    # Non-music-like sounds become voiced when they occur between two vowels
     elif diacritic == "ˬ":
-        # Voicing — must be between two vowels
-        if not (len(adj_syms) >= 2 and
-                any(s in VOWELS for s in adj_syms) and
-                sum(1 for s in adj_syms if s in VOWELS) >= 1):
-            return False, "Voicing (ˬ) requires the consonant to be between two vowels."
+        if base_type != "base_consonant":
+            return False, f"Voicing (ˬ) applies to consonants only, not '{base_symbol}'."
+        if base_symbol in SONORANTS:
+            return False, (f"Voicing (ˬ) applies to obstruent (non-sonorant) consonants. "
+                           f"'{base_symbol}' is already a sonorant.")
+        # Need vowels on BOTH sides (between two vowels)
+        left_has_vowel  = False
+        right_has_vowel = False
+        for s, r, c in adjacent:
+            if c < col and s in VOWELS_SET: left_has_vowel  = True
+            if c > col and s in VOWELS_SET: right_has_vowel = True
+        if not (left_has_vowel and right_has_vowel):
+            return False, ("Voicing (ˬ) requires the consonant to occur BETWEEN "
+                           "two vowels (V_C_V environment).")
+
+    # ── 7. COMPENSATORY LENGTHENING (ː) ──────────────────────────────
+    # Environment: one of two adjacent vowels at a word boundary when
+    # the other vowel is elided. Applies to vowels only.
+    elif diacritic == "ː":
+        if base_type != "base_vowel":
+            return False, f"Compensatory Lengthening (ː) applies to vowels only, not '{base_symbol}'."
+        # Must be at a word boundary or adjacent to an elided vowel (ø)
+        has_boundary = any(
+            isinstance(board[r][c], dict) and board[r][c].get("type") == "boundary"
+            for s, r, c in adjacent
+        )
+        # Also valid if adjacent to an elided vowel tile
+        has_elision = any("ø" in s for s in adj_syms)
+        # Or simply adjacent to another vowel (across morpheme boundary)
+        has_adj_vowel = any(s in VOWELS_SET for s in adj_syms)
+        if not (has_boundary or has_elision or has_adj_vowel):
+            return False, ("Compensatory Lengthening (ː) requires the vowel to be at "
+                           "a word boundary or adjacent to an elided vowel.")
+
+    # ── 13. GLOTTALISATION (ˀ) ───────────────────────────────────────
+    # Environment: any non-glottal sound adjacent to a glottal sound /ʔ, h, ħ, ʕ/
+    elif diacritic == "ˀ":
+        if base_type != "base_consonant":
+            return False, f"Glottalisation (ˀ) applies to consonants only, not '{base_symbol}'."
+        GLOTTALS = {"ʔ", "h", "ħ", "ʕ"}
+        if base_symbol in GLOTTALS:
+            return False, f"'{base_symbol}' is already a glottal sound."
+        if not any(s in GLOTTALS for s in adj_syms):
+            return False, ("Glottalisation (ˀ) requires an adjacent glottal sound "
+                           "/ʔ, h, ħ, ʕ/.")
+
+    # ── 14. VELARIZATION (ˠ) ─────────────────────────────────────────
+    # Environment: any non-velar sound adjacent to a velar consonant or close back vowel
+    elif diacritic == "ˠ":
+        if base_type != "base_consonant":
+            return False, f"Velarization (ˠ) applies to consonants only, not '{base_symbol}'."
+        VELARS  = {"k", "g", "ŋ", "x", "ɣ", "kp", "gb"}
+        BACK_V  = {"u", "o", "ɔ", "ʊ"}
+        if base_symbol in VELARS:
+            return False, f"'{base_symbol}' is already a velar sound."
+        if not any(s in VELARS or s in BACK_V for s in adj_syms):
+            return False, ("Velarization (ˠ) requires an adjacent velar consonant "
+                           "/k, g, ŋ, x, ɣ, kp, gb/ or close back vowel /u, o, ɔ/.")
+
+    # ── 15. PHARYNGEALISATION (ˤ) ────────────────────────────────────
+    # Environment: any non-pharyngeal sound adjacent to a pharyngeal /ħ, ʕ/
+    elif diacritic == "ˤ":
+        if base_type != "base_consonant":
+            return False, f"Pharyngealisation (ˤ) applies to consonants only, not '{base_symbol}'."
+        if base_symbol in PHARYNGEALS:
+            return False, f"'{base_symbol}' is already a pharyngeal sound."
+        if not any(s in PHARYNGEALS for s in adj_syms):
+            return False, ("Pharyngealisation (ˤ) requires an adjacent pharyngeal sound "
+                           "/ħ/ or /ʕ/.")
+
+    # ── SYLLABICITY (̩) ───────────────────────────────────────────────
+    # Nasals and liquids can become syllabic nuclei
+    elif diacritic == "̩":
+        SYLLABIC_ELIGIBLE = NASALS | {"l", "r", "ʋ"}
+        if base_symbol not in SYLLABIC_ELIGIBLE:
+            return False, (f"Syllabicity (̩) applies to nasals /m, n, ɲ, ŋ/ and "
+                           f"liquids /l, r/ only, not '{base_symbol}'.")
 
     return True, None
 
