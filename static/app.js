@@ -193,15 +193,30 @@ function initMP(serverUrl,roomCode,playerName){
     });
 
     socket.on("word_played",d=>{
-      showToast(d.player+": /"+d.word+"/ +"+d.score+"pts","ok");
-      // Add to word log
-      G.hist.push({
-        word: d.word,
-        player: d.player,
-        tn: G.tn || 1,
-        score: d.score,
-        processes: d.processes || ""
-      });
+      const wordDisplay = d.words && d.words.length > 1
+        ? d.words.join(" + ") + " ("+d.words.length+" words)"
+        : d.word;
+      showToast(d.player+": "+wordDisplay+" +"+d.score+"pts","ok");
+      // Add each word to log
+      if(d.words && d.words.length > 0){
+        d.words.forEach((w,i)=>{
+          G.hist.push({
+            word: w.replace(/\//g,""),
+            player: d.player,
+            tn: G.tn || 1,
+            score: i===0 ? d.score : "",
+            processes: i===0 ? (d.processes||"") : ""
+          });
+        });
+      } else {
+        G.hist.push({
+          word: d.word,
+          player: d.player,
+          tn: G.tn || 1,
+          score: d.score,
+          processes: d.processes || ""
+        });
+      }
       renderLog();
     });
     socket.on("player_passed",d=>showToast(d.player+" passed.","info"));
