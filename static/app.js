@@ -416,16 +416,106 @@ function validateWord(tiles){
 
 function diacEnv(diac,r,c){
   const adj=[];
+  const bc=G.board[r][c];
+  const baseSym=bc?.symbol||"";
+  const baseType=bc?.type||"";
+
   for(const[dr,dc]of[[-1,0],[1,0],[0,-1],[0,1]]){
     const nr=r+dr,nc=c+dc;
     if(nr>=0&&nr<15&&nc>=0&&nc<15&&G.board[nr][nc]?.symbol) adj.push(G.board[nr][nc].symbol);
   }
   const has=set=>adj.some(s=>set.has(s));
-  if(diac==="̃")  return has(NASALS)?null:"Needs adjacent nasal.";
-  if(diac==="ʷ")  return(has(ROUNDED)||adj.includes("w"))?null:"Needs adjacent rounded vowel /u,o,ɔ/ or /w/.";
-  if(diac==="ʲ")  return(has(FRONT_V)||adj.includes("j"))?null:"Needs adjacent /i,e/ or /j/.";
-  if(diac==="ˤ")  return has(PHARYNGS)?null:"Needs adjacent /ħ/ or /ʕ/.";
-  if(diac==="ˬ")  return adj.some(s=>VOWELS.has(s))?null:"Needs to be between vowels.";
+  const GLOTTALS=new Set(["ʔ","h","ħ","ʕ"]);
+  const VELARS=new Set(["k","g","ŋ","x","ɣ","kp","gb"]);
+  const BACK_V=new Set(["u","o","ɔ","ʊ"]);
+  const SONORANTS=new Set([...NASALS,...["l","r","ʋ"]]);
+
+  // 1. Nasalisation — vowel/nasal adjacent to nasal
+  if(diac==="̃"){
+    if(VOWELS.has(baseSym)&&!has(NASALS))
+      return "Nasalisation: vowel must be adjacent to a nasal /m,n,ɲ,ŋ/.";
+    if(!VOWELS.has(baseSym)&&!NASALS.has(baseSym))
+      return "Nasalisation applies to vowels and nasals only.";
+    return null;
+  }
+  // 4. Labialisation — any consonant before /u,o,ɔ/
+  if(diac==="ʷ"){
+    if(baseType!=="base_consonant"&&baseType!=="C")
+      return "Labialisation applies to consonants only.";
+    if(!has(ROUNDED))
+      return "Labialisation: consonant must precede /u, o, ɔ/.";
+    return null;
+  }
+  // 5. Palatalisation — non-sonorant consonant before /i,e/
+  if(diac==="ʲ"){
+    if(baseType!=="base_consonant"&&baseType!=="C")
+      return "Palatalisation applies to consonants only.";
+    if(!has(FRONT_V))
+      return "Palatalisation: consonant must precede /i/ or /e/.";
+    return null;
+  }
+  // 6. Voicing — obstruent consonant between two vowels
+  if(diac==="ˬ"){
+    if(baseType!=="base_consonant"&&baseType!=="C")
+      return "Voicing applies to consonants only.";
+    let leftV=false,rightV=false;
+    for(const[dr,dc]of[[-1,0],[1,0],[0,-1],[0,1]]){
+      const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nr<15&&nc>=0&&nc<15&&G.board[nr][nc]?.symbol){
+        const s=G.board[nr][nc].symbol;
+        if(VOWELS.has(s)){
+          if(dc===-1||dr===-1) leftV=true;
+          else rightV=true;
+        }
+      }
+    }
+    if(!leftV&&!rightV) return "Voicing: consonant must be between two vowels.";
+    return null;
+  }
+  // 7. Compensatory lengthening — vowel only
+  if(diac==="ː"){
+    if(!VOWELS.has(baseSym))
+      return "Compensatory Lengthening applies to vowels only.";
+    return null;
+  }
+  // 13. Glottalisation — consonant adjacent to glottal
+  if(diac==="ˀ"){
+    if(baseType!=="base_consonant"&&baseType!=="C")
+      return "Glottalisation applies to consonants only.";
+    if(!has(GLOTTALS))
+      return "Glottalisation: consonant must be adjacent to /ʔ,h,ħ,ʕ/.";
+    return null;
+  }
+  // 14. Velarization — consonant adjacent to velar or back vowel
+  if(diac==="ˠ"){
+    if(baseType!=="base_consonant"&&baseType!=="C")
+      return "Velarization applies to consonants only.";
+    if(!has(VELARS)&&!has(BACK_V))
+      return "Velarization: consonant must be adjacent to /k,g,ŋ/ or back vowel /u,o,ɔ/.";
+    return null;
+  }
+  // 15. Pharyngealisation — consonant adjacent to pharyngeal
+  if(diac==="ˤ"){
+    if(baseType!=="base_consonant"&&baseType!=="C")
+      return "Pharyngealisation applies to consonants only.";
+    if(!has(PHARYNGS))
+      return "Pharyngealisation: consonant must be adjacent to /ħ/ or /ʕ/.";
+    return null;
+  }
+  // 2. Elision — vowel at word boundary or adjacent vowel
+  if(diac==="ø"){
+    if(!VOWELS.has(baseSym))
+      return "Elision applies to vowels only.";
+    if(!adj.some(s=>VOWELS.has(s)))
+      return "Elision: vowel must be adjacent to another vowel or at a word boundary.";
+    return null;
+  }
+  // Syllabicity — nasals and liquids only
+  if(diac==="̩"){
+    if(!NASALS.has(baseSym)&&!["l","r","ʋ"].includes(baseSym))
+      return "Syllabicity applies to nasals and liquids /l,r/ only.";
+    return null;
+  }
   return null;
 }
 
@@ -977,10 +1067,13 @@ function onCell(r,c){
   // MULTIPLAYER — send to server, it will broadcast back to all players
   if(MP.active&&socket){
     console.log("[DEBUG] onCell r="+r+" c="+c+" tile="+JSON.stringify(tile)+" bc="+JSON.stringify(bc));
-    const hasSymbol = bc && bc.symbol && bc.type !== "bonus";
-    console.log("[DEBUG] hasSymbol="+hasSymbol+" tile.type="+tile.type);
+    // A cell has a tile if it has a symbol property (not just a bonus string)
+    const hasSymbol = bc && typeof bc === "object" && bc.symbol;
     if(tile.type==="D"||tile.type==="diacritic"){
-      if(!hasSymbol){showToast("Tap an existing tile to apply diacritic. bc="+JSON.stringify(bc),"err");return;}
+      if(!hasSymbol){showToast("Select an existing tile on the board to apply the diacritic.","err");return;}
+      // Client-side environment check before sending to server
+      const envErr=diacEnv(tile.symbol,r,c);
+      if(envErr){showToast(envErr,"err");return;}
     } else {
       if(hasSymbol){showToast("Square occupied.","err");return;}
     }
@@ -992,7 +1085,7 @@ function onCell(r,c){
 
   // DIACRITIC (local)
   if(tile.type==="D"||tile.type==="diacritic"){
-    if(!bc?.symbol){showToast("Tap an existing tile.","err");return;}
+    if(!(bc && typeof bc === "object" && bc.symbol)){showToast("Select an existing tile on the board to apply the diacritic.","err");return;}
     const envErr=diacEnv(tile.symbol,r,c);
     if(envErr){showToast(envErr,"err");return;}
     const prev={sym:bc.symbol,pts:bc.points};
