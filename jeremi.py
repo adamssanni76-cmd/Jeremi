@@ -1559,6 +1559,20 @@ def validate_word(word_tiles, board):
     if not symbols:
         return False, "Word contains only boundary markers."
 
+    # Rule 0: No vowel hiatus — two vowels cannot appear consecutively
+    for i in range(len(symbols) - 1):
+        s1, s2 = symbols[i], symbols[i+1]
+        # Check base symbols (strip diacritics for comparison)
+        b1 = unicodedata.normalize("NFD", s1)[0] if s1 else s1
+        b2 = unicodedata.normalize("NFD", s2)[0] if s2 else s2
+        if b1 in VOWELS and b2 in VOWELS:
+            if b1 == 'i':
+                return False, f"Glide formation: /i/ before /{s2}/ must become /j/."
+            if b1 == 'u':
+                return False, f"Glide formation: /u/ before /{s2}/ must become /w/."
+            return False, (f"Vowel hiatus: /{s1}{s2}/ — two vowels cannot appear "
+                          f"together without a consonant between them.")
+
     # Rule 1: syllable structure
     syllables = split_into_syllables(symbols)
     if syllables is None:
