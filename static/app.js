@@ -397,6 +397,18 @@ function validateWord(tiles){
   if(!syms.length) return{ok:false,r:"No tiles"};
   const sl=splitSyl(syms);
   if(!sl) return{ok:false,r:`Invalid syllable structure /${syms.join(" ")}/. Only CV, V, CGV.`};
+
+  // Check for vowel hiatus — no two vowels consecutive
+  // (glide formation: /i/ or /u/ before vowel must become /j/ or /w/)
+  for(let i=0;i<syms.length-1;i++){
+    const s1=syms[i],s2=syms[i+1];
+    if(isVL(s1)&&isVL(s2)){
+      if(s1==="i") return{ok:false,r:`Glide formation: /i/ before /${s2}/ must become /j/.`};
+      if(s1==="u") return{ok:false,r:`Glide formation: /u/ before /${s2}/ must become /w/.`};
+      return{ok:false,r:`Vowel hiatus: /${s1}${s2}/ — two vowels cannot appear together without a consonant.`};
+    }
+  }
+
   let root=[...syms];
   if(root[0]==="i"&&root.length>1) root=root.slice(1);
   if(root.length>=2&&root[root.length-2]==="n"&&root[root.length-1]==="ɛ") root=root.slice(0,-2);
