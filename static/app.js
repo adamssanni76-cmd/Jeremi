@@ -299,42 +299,36 @@ function initMP(serverUrl,roomCode,playerName){
 
 // ─── TILE DATA ───────────────────────────────────────────────
 const T = {
-  // CONSONANTS (c=tile count, p=points, t=type)
-  "m":{c:4,p:4,t:"C"},"ɱ":{c:1,p:1,t:"C"},"n":{c:4,p:4,t:"C"},
-  "ɲ":{c:2,p:2,t:"C"},"ŋ":{c:3,p:3,t:"C"},"ɴ":{c:1,p:1,t:"C"},
-  "ŋm":{c:1,p:1,t:"C"},"p":{c:4,p:4,t:"C"},"b":{c:4,p:4,t:"C"},
-  "t":{c:4,p:4,t:"C"},"d":{c:4,p:4,t:"C"},"c":{c:1,p:1,t:"C"},
-  "ɟ":{c:1,p:1,t:"C"},"k":{c:4,p:4,t:"C"},"g":{c:4,p:4,t:"C"},
-  "q":{c:1,p:1,t:"C"},"ɢ":{c:1,p:1,t:"C"},"ʔ":{c:1,p:1,t:"C"},
-  "kp":{c:4,p:4,t:"C"},"gb":{c:3,p:3,t:"C"},"pʼ":{c:1,p:1,t:"C"},
-  "tʼ":{c:1,p:1,t:"C"},"cʼ":{c:1,p:1,t:"C"},"kʼ":{c:1,p:1,t:"C"},
-  "qʼ":{c:1,p:1,t:"C"},"ʘ":{c:1,p:1,t:"C"},"[":{c:1,p:1,t:"C"},
-  "ǃ":{c:1,p:1,t:"C"},"ǂ":{c:1,p:1,t:"C"},"pɸ":{c:1,p:1,t:"C"},
-  "bβ":{c:1,p:1,t:"C"},"ts":{c:1,p:1,t:"C"},"dz":{c:1,p:1,t:"C"},
-  "tʃ":{c:1,p:1,t:"C"},"dʒ":{c:1,p:1,t:"C"},"kx":{c:1,p:1,t:"C"},
-  "gɣ":{c:1,p:1,t:"C"},"ɸ":{c:1,p:1,t:"C"},"β":{c:1,p:1,t:"C"},
-  "f":{c:3,p:3,t:"C"},"v":{c:2,p:2,t:"C"},"s":{c:4,p:4,t:"C"},
-  "z":{c:2,p:2,t:"C"},"ʃ":{c:2,p:2,t:"C"},"ʒ":{c:1,p:1,t:"C"},
-  "ç":{c:1,p:1,t:"C"},"ʝ":{c:1,p:1,t:"C"},"x":{c:1,p:1,t:"C"},
-  "ɣ":{c:1,p:1,t:"C"},"χ":{c:1,p:1,t:"C"},"ʁ":{c:1,p:1,t:"C"},
-  "ħ":{c:1,p:1,t:"C"},"ʕ":{c:1,p:1,t:"C"},"h":{c:1,p:1,t:"C"},
-  "ʋ":{c:1,p:1,t:"C"},"r":{c:3,p:3,t:"C"},"j":{c:4,p:4,t:"C"},
-  "w":{c:4,p:4,t:"C"},"l":{c:4,p:4,t:"C"},
-  // VOWELS (c=tile count, p=points)
-  "i":{c:20,p:20,t:"V"},"e":{c:13,p:13,t:"V"},"ɛ":{c:8,p:8,t:"V"},
-  "a":{c:20,p:20,t:"V"},"ɔ":{c:16,p:16,t:"V"},"o":{c:11,p:11,t:"V"},
-  "u":{c:14,p:14,t:"V"},"ɪ":{c:2,p:2,t:"V"},"ʊ":{c:3,p:3,t:"V"},
-  // DIACRITICS (c=tile count, p=points)
-  "̃":{c:4,p:14,t:"D"},    // Nasalisation
-  "ʷ":{c:12,p:2,t:"D"},   // Labialisation
-  "ʲ":{c:12,p:1,t:"D"},   // Palatalisation
-  "ˬ":{c:6,p:8,t:"D"},    // Voicing
-  "ː":{c:8,p:7,t:"D"},    // Compensatory Lengthening
-  "ˀ":{c:4,p:10,t:"D"},   // Glottalisation
-  "ˠ":{c:4,p:10,t:"D"},   // Velarization
-  "ˤ":{c:12,p:1,t:"D"},   // Pharyngealisation
-  "ø":{c:4,p:12,t:"D"},   // Elision
-  "̩":{c:12,p:2,t:"D"},    // Syllabicity
+  // CONSONANTS — c=tile count, p=points, t=type, f=frequency index (shown in ref panel)
+  "m":{c:4,p:4,t:"C",f:2},"ɱ":{c:1,p:1,t:"C",f:8},"n":{c:4,p:4,t:"C",f:2},
+  "ɲ":{c:2,p:2,t:"C",f:6},"ŋ":{c:3,p:3,t:"C",f:4},"ɴ":{c:1,p:1,t:"C",f:8},
+  "ŋm":{c:1,p:1,t:"C",f:8},"p":{c:4,p:4,t:"C",f:2},"b":{c:4,p:4,t:"C",f:2},
+  "t":{c:4,p:4,t:"C",f:2},"d":{c:4,p:4,t:"C",f:2},"c":{c:1,p:1,t:"C",f:8},
+  "ɟ":{c:1,p:1,t:"C",f:8},"k":{c:4,p:4,t:"C",f:2},"g":{c:4,p:4,t:"C",f:2},
+  "q":{c:1,p:1,t:"C",f:8},"ɢ":{c:1,p:1,t:"C",f:8},"ʔ":{c:1,p:1,t:"C",f:8},
+  "kp":{c:4,p:4,t:"C",f:2},"gb":{c:3,p:3,t:"C",f:4},"pʼ":{c:1,p:1,t:"C",f:8},
+  "tʼ":{c:1,p:1,t:"C",f:8},"cʼ":{c:1,p:1,t:"C",f:8},"kʼ":{c:1,p:1,t:"C",f:8},
+  "qʼ":{c:1,p:1,t:"C",f:8},"ʘ":{c:1,p:1,t:"C",f:8},"[":{c:1,p:1,t:"C",f:8},
+  "ǃ":{c:1,p:1,t:"C",f:8},"ǂ":{c:1,p:1,t:"C",f:8},"pɸ":{c:1,p:1,t:"C",f:8},
+  "bβ":{c:1,p:1,t:"C",f:8},"ts":{c:1,p:1,t:"C",f:8},"dz":{c:1,p:1,t:"C",f:8},
+  "tʃ":{c:1,p:1,t:"C",f:8},"dʒ":{c:1,p:1,t:"C",f:8},"kx":{c:1,p:1,t:"C",f:8},
+  "gɣ":{c:1,p:1,t:"C",f:8},"ɸ":{c:1,p:1,t:"C",f:8},"β":{c:1,p:1,t:"C",f:8},
+  "f":{c:3,p:3,t:"C",f:4},"v":{c:2,p:2,t:"C",f:6},"s":{c:4,p:4,t:"C",f:2},
+  "z":{c:2,p:2,t:"C",f:6},"ʃ":{c:2,p:2,t:"C",f:6},"ʒ":{c:1,p:1,t:"C",f:8},
+  "ç":{c:1,p:1,t:"C",f:8},"ʝ":{c:1,p:1,t:"C",f:8},"x":{c:1,p:1,t:"C",f:8},
+  "ɣ":{c:1,p:1,t:"C",f:8},"χ":{c:1,p:1,t:"C",f:8},"ʁ":{c:1,p:1,t:"C",f:8},
+  "ħ":{c:1,p:1,t:"C",f:8},"ʕ":{c:1,p:1,t:"C",f:8},"h":{c:1,p:1,t:"C",f:8},
+  "ʋ":{c:1,p:1,t:"C",f:8},"r":{c:3,p:3,t:"C",f:4},"j":{c:4,p:4,t:"C",f:2},
+  "w":{c:4,p:4,t:"C",f:2},"l":{c:4,p:4,t:"C",f:2},
+  // VOWELS — c=tile count, p=points, f=frequency index
+  "i":{c:20,p:20,t:"V",f:1},"e":{c:13,p:13,t:"V",f:3},"ɛ":{c:8,p:8,t:"V",f:5},
+  "a":{c:20,p:20,t:"V",f:1},"ɔ":{c:16,p:16,t:"V",f:1},"o":{c:11,p:11,t:"V",f:3},
+  "u":{c:14,p:14,t:"V",f:3},"ɪ":{c:2,p:2,t:"V",f:8},"ʊ":{c:3,p:3,t:"V",f:8},
+  // DIACRITICS — c=tile count (shown directly), p=points
+  "̃":{c:4,p:14,t:"D"},"ʷ":{c:12,p:2,t:"D"},"ʲ":{c:12,p:1,t:"D"},
+  "ˬ":{c:6,p:8,t:"D"},"ː":{c:8,p:7,t:"D"},"ˀ":{c:4,p:10,t:"D"},
+  "ˠ":{c:4,p:10,t:"D"},"ˤ":{c:12,p:1,t:"D"},"ø":{c:4,p:12,t:"D"},
+  "̩":{c:12,p:2,t:"D"},
 };
 
 // ─── BONUS SQUARES ───────────────────────────────────────────
@@ -909,20 +903,19 @@ function buildTileRef(){
   const cs=`border:1px solid #4a8a96;padding:0 4px;text-align:center;font-size:9px;color:#0a1a22;background:#bfe3ea;line-height:12px;`;
   const title=`color:#7a1f3d;font-family:Georgia,serif;font-weight:bold;font-size:11px;margin:4px 0 2px`;
 
-  // Consonants in 2 columns
+  // Consonants in 2 columns — show frequency index (f) as on physical game
   const half=Math.ceil(cons.length/2);
   const L=cons.slice(0,half),R=cons.slice(half);
   let rows="";
   for(let i=0;i<half;i++){
     const [ls,li]=L[i]||["",""];
     const [rs,ri]=R[i]||["",""];
-    rows+=`<tr><td class="sym" style="${cs}font-weight:bold">${ls}</td><td style="${cs}">${li.c||""}</td>${rs?`<td class="sym" style="${cs}font-weight:bold">${rs}</td><td style="${cs}">${ri.c||""}</td>`:`<td style="${cs}"></td><td style="${cs}"></td>`}</tr>`;
+    const lf=li.f!=null?li.f:li.c;
+    const rf=ri&&ri.f!=null?ri.f:ri?.c;
+    rows+=`<tr><td class="sym" style="${cs}font-weight:bold">${ls}</td><td style="${cs}">${lf||""}</td>${rs?`<td class="sym" style="${cs}font-weight:bold">${rs}</td><td style="${cs}">${rf||""}</td>`:`<td style="${cs}"></td><td style="${cs}"></td>`}</tr>`;
   }
 
-  // Vowels single row
-  let vrow=`<tr>${vows.map(([s,i])=>`<td class="sym" style="${cs}font-weight:bold">${s}</td><td style="${cs}">${i.c}</td>`).join("")}</tr>`;
-
-  // Diacritics 4 per row
+  // Diacritics 4 per row — show actual tile count (c)
   let drows="";
   for(let i=0;i<dias.length;i+=4){
     drows+=`<tr>${dias.slice(i,i+4).map(([s,info])=>`<td class="sym" style="${cs}font-weight:bold">${s}</td><td style="${cs}">${info.c}</td>`).join("")}</tr>`;
@@ -932,7 +925,7 @@ function buildTileRef(){
     <div class="ref-title" style="${title}">CONSONANTS</div>
     <table>${rows}</table>
     <div class="ref-title" style="${title}">VOWELS</div>
-    <table><tr>${vows.map(([s,i])=>`<td class="sym" style="${cs}font-weight:bold">${s}</td><td style="${cs}">${i.c}</td>`).join("")}</tr></table>
+    <table><tr>${vows.map(([s,i])=>`<td class="sym" style="${cs}font-weight:bold">${s}</td><td style="${cs}">${i.f!=null?i.f:i.c}</td>`).join("")}</tr></table>
     <div class="ref-title" style="${title}">DIACRITICS</div>
     <table>${drows}</table>`;
 
