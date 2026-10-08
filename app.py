@@ -300,7 +300,6 @@ def on_replace(data):
     returned = [player["hand"].pop(i) for i in sorted(valid, reverse=True)]
     player["hand"].extend(deal_tiles(room["bag"], len(returned)))
     room["bag"].extend(returned); random.shuffle(room["bag"])
-    room["consecutive_passes"] += 1
     socketio.emit("tiles_replaced", {"player": player["name"], "count": len(returned)}, room=room_id)
     send_hand(room_id, pi)
     _next_turn(room_id)
