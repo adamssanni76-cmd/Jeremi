@@ -1071,7 +1071,6 @@ function onCell(r,c){
 
   // MULTIPLAYER — send to server, it will broadcast back to all players
   if(MP.active&&socket){
-    console.log("[DEBUG] onCell r="+r+" c="+c+" tile="+JSON.stringify(tile)+" bc="+JSON.stringify(bc));
     // A cell has a tile if it has a symbol property (not just a bonus string)
     const hasSymbol = bc && typeof bc === "object" && bc.symbol;
     if(tile.type==="D"||tile.type==="diacritic"){
@@ -1079,9 +1078,14 @@ function onCell(r,c){
       // Client-side environment check before sending to server
       const envErr=diacEnv(tile.symbol,r,c);
       if(envErr){showToast(envErr,"err");return;}
+      // Optimistic board update so subsequent diacritic checks see accurate adjacency
+      G.board[r][c]={...G.board[r][c],symbol:G.board[r][c].symbol+tile.symbol,points:G.board[r][c].points+tile.points};
     } else {
       if(hasSymbol){showToast("Square occupied.","err");return;}
+      // Optimistic board update so diacEnv checks on the next tile are accurate
+      G.board[r][c]={symbol:tile.symbol,points:tile.points,type:tile.type};
     }
+    renderBoard();
     socket.emit("place_tile",{room_id:MP.roomId,player_index:MP.playerIndex,tile_index:G.si,row:r,col:c});
     G.si=-1;
     document.querySelectorAll(".rtile.sel,.rtile.selD").forEach(el=>el.classList.remove("sel","selD"));
