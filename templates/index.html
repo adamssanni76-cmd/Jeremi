@@ -7,8 +7,8 @@
 <meta name="theme-color" content="#c9a227">
 <link rel="apple-touch-icon" href="/static/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="JEREMI">
-<title>JEREMI</title>
+<meta name="apple-mobile-web-app-title" content="dʒērēmí">
+<title>dʒērēmí</title>
 <style>
 :root {
   --bg:#0b0d10; --panel:#14171b; --panel2:#1b1f24; --line:#2a2f36;
@@ -133,38 +133,24 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
    Targets actual buildUI() class names
 ══════════════════════════════════════════ */
 
-/* Portrait: show rotate warning */
-#portrait-warning {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: #0a0a0f;
-  z-index: 9999;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 40px;
-  gap: 16px;
-}
-#portrait-warning .ri {
-  font-size: 4rem;
-  animation: spin-hint 2s ease-in-out infinite;
-}
-@keyframes spin-hint {
-  0%,100%{transform:rotate(0deg)}
-  50%{transform:rotate(90deg)}
-}
-#portrait-warning h2 {
-  font-family:"Cinzel",serif;
-  color:#c9a227;
-  font-size:1.4rem;
-}
-#portrait-warning p { color:#8b9099; font-size:0.9rem; }
-
+/* Portrait: scrollable layout — no rotate-lock */
 @media(max-width:900px) and (orientation:portrait){
-  #portrait-warning { display:flex !important; }
-  #app { display:none !important; }
+  .main-layout {
+    flex-direction: column !important;
+    align-items: center !important;
+    overflow-x: hidden;
+  }
+  .board-outer {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+  .scoreboard, .word-log {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .tile-ref { display: none !important; }
+  .jeremi-side { display: none !important; }
 }
 
 @media(max-width:900px) and (orientation:landscape){
@@ -323,7 +309,7 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
 <!-- SETUP -->
 <div class="ov show" id="ovSetup">
   <div class="modal">
-    <h2>JEREMI — New Game</h2>
+    <h2>dʒērēmí — New Game</h2>
     <div class="setup-field"><label>Number of Players</label>
       <select id="numPlayers" onchange="updateFields()">
         <option value="2">2 Players</option>
@@ -380,7 +366,7 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
     <div class="modal-btns" id="infoBtns"></div>
   </div>
 
-<!-- Mobile bottom panel -->
+<!-- Mobile bottom panel (used by app.js mobile handlers) -->
 <div class="bottom-panel" id="bottomPanel" style="display:none">
   <div class="score-strip" id="scoreStrip"></div>
   <div class="rack" id="mobileRack"></div>
