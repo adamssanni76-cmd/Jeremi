@@ -65,8 +65,8 @@ function addTouchToRackTile(div, i){
 
 function addTouchToCell(div, r, c){
   div.addEventListener("touchend", e=>{
-    e.preventDefault();
-    if(G.si>=0){ onCell(r,c); }
+    if(G.si>=0){ e.preventDefault(); onCell(r,c); }
+    // No preventDefault when no tile selected — allows board to scroll
   }, {passive:false});
 }
 
