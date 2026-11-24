@@ -839,7 +839,7 @@ function startGame(){
   for(let i=0;i<n;i++){
     const name=document.getElementById(`pn${i}`)?.value.trim()||`Player ${i+1}`;
     const isAI=aiDiff!=="none"&&i===n-1;
-    players.push({name:isAI?"JEREMI-AI":name,hand:[],score:0,isAI,difficulty:aiDiff,skipNext:false});
+    players.push({name:isAI?"dʒērēmí-AI":name,hand:[],score:0,isAI,difficulty:aiDiff,skipNext:false});
   }
   G.bag=buildBag();G.board=Array.from({length:15},()=>Array(15).fill(null));
   G.players=players;G.ci=0;G.tn=1;G.hist=[];G.bht=false;G.placed=[];G.si=-1;
@@ -860,7 +860,7 @@ function buildUI(){
   const app=document.getElementById("app");
   app.innerHTML=`
     <div class="topbar">
-      <div class="brand">JEREMI</div>
+      <div class="brand">dʒērēmí</div>
       <div class="turn-pill" id="turnPill">Turn 1</div>
       <div class="topbar-actions">
         <button onclick="showHist()">📜 History</button>
@@ -871,7 +871,7 @@ function buildUI(){
     <div class="main-layout">
       <div class="scoreboard" id="sb"></div>
       <div class="board-outer">
-        <div class="jeremi-side">JEREMI</div>
+        <div class="jeremi-side">dʒērēmí</div>
         <div class="board" id="board"></div>
         <div class="tile-ref" id="tileRef"></div>
       </div>
