@@ -331,6 +331,58 @@ const T = {
   "̩":{c:12,p:2,t:"D"},
 };
 
+// ─── LEVEL SELECTOR ─────────────────────────────────────────
+let selectedLevel=1;
+function setLevel(n){
+  selectedLevel=n;
+  [1,2,3,4].forEach(i=>{
+    const b=document.getElementById(`lvl${i}`);
+    if(b)b.classList.toggle("active",i===n);
+  });
+}
+
+// ─── YORUBA TILE DATA (Level 4 — Language-Specific) ─────────
+// Tone-marked vowels: H=high (acute), M=mid (unmarked), L=low (grave)
+// Extra Yoruba vowels: ẹ (open-mid front), ọ (open-mid back), each with tones
+const YT={
+  // Mid-tone vowels
+  "a":{c:6,p:5,t:"V",tone:"M"},"e":{c:5,p:6,t:"V",tone:"M"},
+  "ẹ":{c:5,p:6,t:"V",tone:"M"},"i":{c:5,p:6,t:"V",tone:"M"},
+  "o":{c:5,p:6,t:"V",tone:"M"},"ọ":{c:5,p:6,t:"V",tone:"M"},
+  "u":{c:5,p:6,t:"V",tone:"M"},
+  // High-tone vowels (acute)
+  "á":{c:4,p:9,t:"V",tone:"H"},"é":{c:4,p:9,t:"V",tone:"H"},
+  "ẹ́":{c:3,p:11,t:"V",tone:"H"},"í":{c:3,p:11,t:"V",tone:"H"},
+  "ó":{c:4,p:9,t:"V",tone:"H"},"ọ́":{c:3,p:11,t:"V",tone:"H"},
+  "ú":{c:3,p:11,t:"V",tone:"H"},
+  // Low-tone vowels (grave)
+  "à":{c:4,p:9,t:"V",tone:"L"},"è":{c:4,p:9,t:"V",tone:"L"},
+  "ẹ̀":{c:3,p:11,t:"V",tone:"L"},"ì":{c:3,p:11,t:"V",tone:"L"},
+  "ò":{c:4,p:9,t:"V",tone:"L"},"ọ̀":{c:3,p:11,t:"V",tone:"L"},
+  "ù":{c:3,p:11,t:"V",tone:"L"},
+  // Yoruba consonants
+  "b":{c:4,p:4,t:"C"},"d":{c:4,p:4,t:"C"},"f":{c:3,p:5,t:"C"},
+  "g":{c:4,p:4,t:"C"},"gb":{c:3,p:6,t:"C"},"h":{c:2,p:8,t:"C"},
+  "j":{c:3,p:5,t:"C"},"k":{c:4,p:4,t:"C"},"kp":{c:3,p:6,t:"C"},
+  "l":{c:5,p:3,t:"C"},"m":{c:4,p:4,t:"C"},"n":{c:4,p:4,t:"C"},
+  "p":{c:3,p:5,t:"C"},"r":{c:4,p:4,t:"C"},"s":{c:4,p:4,t:"C"},
+  "ṣ":{c:3,p:6,t:"C"},"t":{c:4,p:4,t:"C"},"w":{c:3,p:5,t:"C"},
+  "y":{c:3,p:5,t:"C"},
+};
+
+function buildYorubaBag(){
+  const bag=[];
+  for(const[sym,info]of Object.entries(YT)){
+    for(let i=0;i<info.c;i++){
+      const tile={symbol:sym,points:info.p,type:info.t};
+      if(info.tone)tile.tone=info.tone;
+      bag.push(tile);
+    }
+  }
+  for(let i=0;i<4;i++)bag.push({symbol:null,points:0,type:"blank"});
+  return shuffle(bag);
+}
+
 // ─── BONUS SQUARES ───────────────────────────────────────────
 const BONUS = {
   "0,9":"TM","2,7":"TM","7,7":"TM","12,8":"TM","14,5":"TM",
@@ -592,7 +644,7 @@ function getAllWords(rp){
 }
 
 // ─── GAME STATE ───────────────────────────────────────────────
-let G={board:null,bag:[],players:[],ci:0,tn:1,hist:[],bht:false,placed:[],si:-1,dragIdx:-1,repSel:[],blankIdx:-1};
+let G={board:null,bag:[],players:[],ci:0,tn:1,hist:[],bht:false,placed:[],si:-1,dragIdx:-1,repSel:[],blankIdx:-1,level:1};
 
 function buildBag(){
   const bag=[];
@@ -841,7 +893,9 @@ function startGame(){
     const isAI=aiDiff!=="none"&&i===n-1;
     players.push({name:isAI?"dʒērēmí-AI":name,hand:[],score:0,isAI,difficulty:aiDiff,skipNext:false});
   }
-  G.bag=buildBag();G.board=Array.from({length:15},()=>Array(15).fill(null));
+  G.level=selectedLevel;
+  G.bag=G.level===4?buildYorubaBag():buildBag();
+  G.board=Array.from({length:15},()=>Array(15).fill(null));
   G.players=players;G.ci=0;G.tn=1;G.hist=[];G.bht=false;G.placed=[];G.si=-1;
   for(const p of G.players)p.hand=drawTiles(9,true);
   // Draw for first
@@ -862,6 +916,7 @@ function buildUI(){
     <div class="topbar">
       <div class="brand">dʒērēmí</div>
       <div class="turn-pill" id="turnPill">Turn 1</div>
+      <span class="level-badge">${G.level===4?"L4 · Yoruba":"L1 · Phonological Processes"}</span>
       <div class="topbar-actions">
         <button onclick="showHist()">📜 History</button>
         <button onclick="saveGame()">💾 Save</button>
@@ -1390,7 +1445,7 @@ function showInsights(){
 
 // ─── SAVE / LOAD ─────────────────────────────────────────────
 function saveGame(){
-  try{localStorage.setItem("jeremi_save",JSON.stringify({board:G.board,bag:G.bag,players:G.players,ci:G.ci,tn:G.tn,hist:G.hist,bht:G.bht}));showToast("Saved ✓","ok");}
+  try{localStorage.setItem("jeremi_save",JSON.stringify({board:G.board,bag:G.bag,players:G.players,ci:G.ci,tn:G.tn,hist:G.hist,bht:G.bht,level:G.level||1}));showToast("Saved ✓","ok");}
   catch(e){showToast("Could not save.","err");}
 }
 function loadGame(){
@@ -1398,7 +1453,7 @@ function loadGame(){
     const raw=localStorage.getItem("jeremi_save");
     if(!raw){showToast("No saved game.","err");return;}
     const s=JSON.parse(raw);
-    Object.assign(G,{board:s.board,bag:s.bag,players:s.players,ci:s.ci,tn:s.tn,hist:s.hist,bht:s.bht,placed:[],si:-1});
+    Object.assign(G,{board:s.board,bag:s.bag,players:s.players,ci:s.ci,tn:s.tn,hist:s.hist,bht:s.bht,level:s.level||1,placed:[],si:-1});
     document.getElementById("ovSetup").classList.remove("show");
     buildUI();renderAll();showToast("Loaded ✓","ok");
     if(G.players[G.ci].isAI)aiTurn();
