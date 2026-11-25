@@ -1046,8 +1046,17 @@ function getAllWordsOn(board,np,dir){
 // ─── SETUP ───────────────────────────────────────────────────
 function updateFields(){
   const n=+document.getElementById("numPlayers").value;
-  document.getElementById("playerFields").innerHTML=
-    Array.from({length:n},(_,i)=>`<div class="setup-field"><label>Player ${i+1} Name</label><input type="text" id="pn${i}" value="Player ${i+1}"></div>`).join("");
+  const aiDiff=document.getElementById("aiDiff")?.value||"none";
+  const hasAI=aiDiff!=="none";
+  // Human slots only — AI names itself
+  const humanCount=hasAI?n-1:n;
+  const humanFields=Array.from({length:humanCount},(_,i)=>
+    `<div class="setup-field"><label>Player ${i+1} Name</label><input type="text" id="pn${i}" value="Player ${i+1}"></div>`
+  ).join("");
+  const aiField=hasAI
+    ?`<div class="setup-field"><label>AI Player</label><input type="text" disabled value="dʒērēmí-AI" style="color:var(--accent);opacity:.7"></div>`
+    :"";
+  document.getElementById("playerFields").innerHTML=humanFields+aiField;
 }
 
 function startGame(){
