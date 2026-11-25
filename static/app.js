@@ -532,6 +532,70 @@ function validateYorubaWord(tiles){
   return{ok:true};
 }
 
+// ─── LEVEL 2: DISCOVERY PROCEDURE ───────────────────────────
+// After a word is placed, scan the board for minimal pairs:
+// two words the same length differing in exactly ONE segment.
+// Reward +10 Discovery Bonus per pair found.
+
+function getBoardWords(){
+  // Collect all runs of filled cells (horizontal + vertical) of length ≥ 2
+  const words=[];
+  for(let r=0;r<15;r++){
+    let run=[];
+    for(let c=0;c<15;c++){
+      const cell=G.board[r][c];
+      if(cell?.symbol&&cell.type!=="boundary") run.push(cell.symbol);
+      else{if(run.length>=2)words.push(run.join(""));run=[];}
+    }
+    if(run.length>=2)words.push(run.join(""));
+  }
+  for(let c=0;c<15;c++){
+    let run=[];
+    for(let r=0;r<15;r++){
+      const cell=G.board[r][c];
+      if(cell?.symbol&&cell.type!=="boundary") run.push(cell.symbol);
+      else{if(run.length>=2)words.push(run.join(""));run=[];}
+    }
+    if(run.length>=2)words.push(run.join(""));
+  }
+  return [...new Set(words)];
+}
+
+function isMinimalPair(w1,w2){
+  // Split into IPA symbol sequences (handle multi-char symbols like kp, gb, ŋm)
+  // For now compare character-by-character (sufficient for common IPA tiles)
+  if(w1===w2)return false;
+  if(w1.length!==w2.length)return false;
+  let diff=0;
+  for(let i=0;i<w1.length;i++){if(w1[i]!==w2[i])diff++;}
+  return diff===1;
+}
+
+function checkMinimalPairs(newWord){
+  // Called after a word is successfully placed; newWord is the string
+  const allWords=getBoardWords();
+  const pairs=[];
+  for(const w of allWords){
+    if(w!==newWord&&isMinimalPair(newWord,w)){
+      pairs.push(w);
+    }
+  }
+  return pairs;
+}
+
+// ─── LEVEL 3: PROSODIES ─────────────────────────────────────
+// Rule: every placed word must include ≥1 diacritic tile (type "D").
+// This forces players to overlay a suprasegmental feature.
+// Diacritic tiles score DOUBLE their face value in this level.
+
+function validateL3Word(tiles){
+  const tl=tiles.filter(t=>t.type!=="boundary");
+  if(!tl.length)return{ok:false,r:"No tiles"};
+  const hasDiac=tl.some(t=>t.type==="D");
+  if(!hasDiac)return{ok:false,r:"Level 3 — Prosodies: every word must include at least one suprasegmental diacritic tile (ˈ ː ̃ ʲ ʷ …)."};
+  return{ok:true};
+}
+
 function diacEnv(diac,r,c){
   const adj=[];
   const bc=G.board[r][c];
@@ -780,9 +844,47 @@ function execMove(player,move){
   player.hand=hand;
 }
 
+// ─── YORUBA AI CANDIDATE GENERATOR ──────────────────────────
+// Generates only CV / V / syllabic-N sequences from the Yoruba hand
+function validYorubaStruct(syms){
+  const SYL_N=new Set(["m","n"]);
+  let i=0;
+  while(i<syms.length){
+    const s=syms[i];
+    if(YORUBA_VOWELS.has(s)){i++;continue;}
+    const nxt=i+1<syms.length?syms[i+1]:null;
+    if(nxt&&YORUBA_VOWELS.has(nxt)){i+=2;continue;}
+    if(SYL_N.has(s)){i++;continue;}
+    return false; // coda or cluster → reject
+  }
+  return true;
+}
+
+function genYorubaCands(hand){
+  const base=hand.filter(t=>t.symbol&&(t.type==="V"||t.type==="C"));
+  const blanks=hand.filter(t=>t.type==="blank").length;
+  const syms=base.map(t=>t.symbol);
+  const yorubaBlankOpts=["a","e","i","o","u","ẹ","ọ","á","é","à","è"];
+  const pools=[syms];
+  for(let b=0;b<blanks;b++) pools.forEach((_,idx,arr)=>{
+    yorubaBlankOpts.forEach(v=>{const ns=[...arr[idx],v];if(!arr.some(a=>a.join()===ns.join()))arr.push(ns);});
+  });
+  const cands=new Set();
+  for(const pool of pools.slice(0,5)){
+    for(let len=2;len<=Math.min(8,pool.length);len++){
+      for(const perm of perms(pool,len)){
+        if(validYorubaStruct(perm))cands.add(perm.join("|"));
+      }
+      if(cands.size>600)break;
+    }
+    if(cands.size>600)break;
+  }
+  return shuffle([...cands].map(s=>s.split("|")));
+}
+
 function findMove(player){
   const diff=player.difficulty||"medium";
-  const cands=genCands(player.hand);
+  const cands=G.level===4?genYorubaCands(player.hand):genCands(player.hand);
   const anchors=getAnchors();
   const all=[];
   const maxC=diff==="soft"?60:diff==="medium"?200:cands.length;
@@ -978,7 +1080,7 @@ function buildUI(){
     <div class="topbar">
       <div class="brand">dʒērēmí</div>
       <div class="turn-pill" id="turnPill">Turn 1</div>
-      <span class="level-badge">${G.level===4?`L4 · ${G.language?"Yoruba":"Language-Specific"}`:"L1 · Phonological Processes"}</span>
+      <span class="level-badge">${G.level===4?`L4 · ${G.language||"Language-Specific"}`:G.level===3?"L3 · Prosodies":G.level===2?"L2 · Discovery Procedure":"L1 · Phonological Processes"}</span>
       <div class="topbar-actions">
         <button onclick="showHist()">📜 History</button>
         <button onclick="saveGame()">💾 Save</button>
@@ -1305,7 +1407,7 @@ function confirmPlay(){
     const ws=word.filter(t=>t.type!=="boundary").map(t=>t.symbol).join("");
     const pset=new Set(dp.map(p=>`${p.row},${p.col}`));
     const total=scoreTiles(word,pset);
-    const res=G.level===4?validateYorubaWord(word):validateWord(word);
+    const res=G.level===4?validateYorubaWord(word):G.level===3?validateL3Word(word):validateWord(word);
     if(!res.ok){G.placed=[];showToast("❌ "+res.r,"err");return;}
     const ni=(G.ci+1)%G.players.length;
     if(G.players[ni].isAI){finalise(ws,total,pset);return;}
@@ -1338,10 +1440,18 @@ function confirmPlay(){
 
   const words=getAllWords(rp);
   if(!words.length){showToast("No word formed.","err");return;}
-  for(const wt of words){const res=G.level===4?validateYorubaWord(wt):validateWord(wt);if(!res.ok){rollback();showToast(`❌ ${res.r}`,"err");return;}}
+  for(const wt of words){
+    const res=G.level===4?validateYorubaWord(wt):G.level===3?validateL3Word(wt):validateWord(wt);
+    if(!res.ok){rollback();showToast(`❌ ${res.r}`,"err");return;}
+  }
 
   const pset=new Set(rp.map(p=>`${p.row},${p.col}`));
   let total=words.reduce((s,wt)=>s+scoreTiles(wt,pset),0);
+  // Level 3: diacritic tiles score double
+  if(G.level===3){
+    const diacBonus=words[0].filter(t=>pset.has(`${t.row},${t.col}`)&&t.type==="D").reduce((s,t)=>s+t.points,0);
+    total+=diacBonus; // adds diacritic points a second time
+  }
   if(rp.length===9)total+=30;
   const ws=words[0].filter(t=>t.type!=="boundary").map(t=>t.symbol).join("");
   const ni=(G.ci+1)%G.players.length;
@@ -1368,11 +1478,26 @@ function doChallenge(ch){
 function finalise(ws,total,pset){
   // Local game only - MP is handled in confirmPlay
   if(MP.active){return;}
+
+  // Level 2 — Discovery Procedure: check for minimal pairs after placement
+  let discoveryBonus=0;
+  if(G.level===2){
+    const pairs=checkMinimalPairs(ws);
+    if(pairs.length){
+      discoveryBonus=pairs.length*10;
+      total+=discoveryBonus;
+      const pairList=pairs.map(p=>`/${p}/`).join(", ");
+      setTimeout(()=>showToast(`🔍 Minimal pair discovery: /${ws}/ ↔ ${pairList}  +${discoveryBonus}pts`,"ok"),400);
+    }
+  }
+
   G.players[G.ci].score+=total;G.bht=true;
-  G.hist.push({tn:G.tn,player:G.players[G.ci].name,word:ws,score:total});
+  G.hist.push({tn:G.tn,player:G.players[G.ci].name,word:ws,score:total,discovery:discoveryBonus||undefined});
   const needed=9-G.players[G.ci].hand.length;
   if(needed>0)G.players[G.ci].hand.push(...drawTiles(needed));
-  G.placed=[];showToast(`+${total} pts ✓`,"ok");advanceTurn();
+  G.placed=[];
+  if(!discoveryBonus)showToast(`+${total} pts ✓`,"ok");
+  advanceTurn();
 }
 
 function rollback(){
