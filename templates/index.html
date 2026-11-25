@@ -371,14 +371,14 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
         </button>
       </div>
     </div>
-    <div class="setup-field"><label>Number of Players</label>
+    <div class="setup-field" id="numPlayersField"><label>Number of Players</label>
       <select id="numPlayers" onchange="updateFields()">
         <option value="2">2 Players</option>
         <option value="3">3 Players</option>
         <option value="4">4 Players</option>
       </select></div>
     <div id="playerFields"></div>
-    <div class="setup-field"><label>AI Difficulty (last player slot)</label>
+    <div class="setup-field" id="aiDiffField"><label>AI Difficulty (last player slot)</label>
       <select id="aiDiff">
         <option value="none">No AI — All Human</option>
         <option value="soft">AI — Soft</option>
