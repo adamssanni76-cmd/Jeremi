@@ -379,7 +379,7 @@ html,body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;min-he
       </select></div>
     <div id="playerFields"></div>
     <div class="setup-field" id="aiDiffField"><label>AI Difficulty (last player slot)</label>
-      <select id="aiDiff">
+      <select id="aiDiff" onchange="updateFields()">
         <option value="none">No AI — All Human</option>
         <option value="soft">AI — Soft</option>
         <option value="medium" selected>AI — Medium</option>
