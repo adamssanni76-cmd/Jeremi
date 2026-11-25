@@ -331,14 +331,31 @@ const T = {
   "̩":{c:12,p:2,t:"D"},
 };
 
-// ─── LEVEL SELECTOR ─────────────────────────────────────────
+// ─── LEVEL / LANGUAGE SELECTOR ──────────────────────────────
 let selectedLevel=1;
+let selectedLanguage=null;
+
 function setLevel(n){
   selectedLevel=n;
   [1,2,3,4].forEach(i=>{
     const b=document.getElementById(`lvl${i}`);
     if(b)b.classList.toggle("active",i===n);
   });
+  // Show language selector only for L4
+  const lsf=document.getElementById("langSelectField");
+  if(lsf) lsf.style.display=n===4?"block":"none";
+  // Reset language when leaving L4
+  if(n!==4){
+    selectedLanguage=null;
+    document.querySelectorAll("[id^='lang-']").forEach(b=>b.classList.remove("active"));
+  }
+}
+
+function setLanguage(lang){
+  selectedLanguage=lang;
+  document.querySelectorAll("[id^='lang-']").forEach(b=>b.classList.remove("active"));
+  const btn=document.getElementById("lang-"+lang);
+  if(btn)btn.classList.add("active");
 }
 
 // ─── YORUBA TILE DATA (Level 4 — Language-Specific) ─────────
@@ -467,6 +484,49 @@ function validateWord(tiles){
       if(GLIDES.has(s2)&&i+2<syms.length&&isVL(syms[i+2])) continue;
       if(GLIDES.has(s1)&&!isVL(s2)) return{ok:false,r:`Glide /${s1}/ must precede a vowel.`};
       if(!GLIDES.has(s2)) return{ok:false,r:`Illegal cluster /${s1}${s2}/.`};
+    }
+  }
+  return{ok:true};
+}
+
+// ─── YORUBA SYLLABLE VALIDATION (Level 4) ───────────────────
+// Yoruba syllable structure: CV, V, or N (syllabic nasal) only.
+// No codas (syllables cannot end in a consonant).
+// No consonant clusters (CC). Every syllable carries a tone.
+const YORUBA_VOWELS=new Set([
+  "a","e","ẹ","i","o","ọ","u",
+  "á","é","ẹ́","í","ó","ọ́","ú",
+  "à","è","ẹ̀","ì","ò","ọ̀","ù"
+]);
+// m and n can be syllabic nasals (stand alone as a syllable)
+const YORUBA_SYL_NAS=new Set(["m","n"]);
+
+function validateYorubaWord(tiles){
+  const tl=tiles.filter(t=>t.type!=="boundary");
+  if(!tl.length) return{ok:false,r:"No tiles"};
+  const isYV=s=>YORUBA_VOWELS.has(s);
+  let i=0;
+  while(i<tl.length){
+    const sym=tl[i].symbol;
+    if(isYV(sym)){
+      // V syllable — always valid; tone is encoded in the vowel symbol itself
+      i++;
+    } else {
+      // Consonant
+      const nextSym=i+1<tl.length?tl[i+1].symbol:null;
+      if(nextSym&&isYV(nextSym)){
+        // CV syllable ✓
+        i+=2;
+      } else if(YORUBA_SYL_NAS.has(sym)){
+        // Syllabic nasal (m or n standing alone) ✓
+        i++;
+      } else {
+        // Invalid
+        if(!nextSym){
+          return{ok:false,r:`Coda consonant /${sym}/ — Yoruba syllables must be open: CV, V, or syllabic N only.`};
+        }
+        return{ok:false,r:`Consonant cluster /${sym}${nextSym}/ — Yoruba has no consonant clusters.`};
+      }
     }
   }
   return{ok:true};
@@ -894,6 +954,8 @@ function startGame(){
     players.push({name:isAI?"dʒērēmí-AI":name,hand:[],score:0,isAI,difficulty:aiDiff,skipNext:false});
   }
   G.level=selectedLevel;
+  if(G.level===4&&!selectedLanguage){showToast("Please select a language for Level 4.","err");return;}
+  G.language=selectedLanguage||null;
   G.bag=G.level===4?buildYorubaBag():buildBag();
   G.board=Array.from({length:15},()=>Array(15).fill(null));
   G.players=players;G.ci=0;G.tn=1;G.hist=[];G.bht=false;G.placed=[];G.si=-1;
@@ -916,7 +978,7 @@ function buildUI(){
     <div class="topbar">
       <div class="brand">dʒērēmí</div>
       <div class="turn-pill" id="turnPill">Turn 1</div>
-      <span class="level-badge">${G.level===4?"L4 · Yoruba":"L1 · Phonological Processes"}</span>
+      <span class="level-badge">${G.level===4?`L4 · ${G.language?"Yoruba":"Language-Specific"}`:"L1 · Phonological Processes"}</span>
       <div class="topbar-actions">
         <button onclick="showHist()">📜 History</button>
         <button onclick="saveGame()">💾 Save</button>
@@ -1243,7 +1305,7 @@ function confirmPlay(){
     const ws=word.filter(t=>t.type!=="boundary").map(t=>t.symbol).join("");
     const pset=new Set(dp.map(p=>`${p.row},${p.col}`));
     const total=scoreTiles(word,pset);
-    const res=validateWord(word);
+    const res=G.level===4?validateYorubaWord(word):validateWord(word);
     if(!res.ok){G.placed=[];showToast("❌ "+res.r,"err");return;}
     const ni=(G.ci+1)%G.players.length;
     if(G.players[ni].isAI){finalise(ws,total,pset);return;}
@@ -1276,7 +1338,7 @@ function confirmPlay(){
 
   const words=getAllWords(rp);
   if(!words.length){showToast("No word formed.","err");return;}
-  for(const wt of words){const res=validateWord(wt);if(!res.ok){rollback();showToast(`❌ ${res.r}`,"err");return;}}
+  for(const wt of words){const res=G.level===4?validateYorubaWord(wt):validateWord(wt);if(!res.ok){rollback();showToast(`❌ ${res.r}`,"err");return;}}
 
   const pset=new Set(rp.map(p=>`${p.row},${p.col}`));
   let total=words.reduce((s,wt)=>s+scoreTiles(wt,pset),0);
@@ -1445,7 +1507,7 @@ function showInsights(){
 
 // ─── SAVE / LOAD ─────────────────────────────────────────────
 function saveGame(){
-  try{localStorage.setItem("jeremi_save",JSON.stringify({board:G.board,bag:G.bag,players:G.players,ci:G.ci,tn:G.tn,hist:G.hist,bht:G.bht,level:G.level||1}));showToast("Saved ✓","ok");}
+  try{localStorage.setItem("jeremi_save",JSON.stringify({board:G.board,bag:G.bag,players:G.players,ci:G.ci,tn:G.tn,hist:G.hist,bht:G.bht,level:G.level||1,language:G.language||null}));showToast("Saved ✓","ok");}
   catch(e){showToast("Could not save.","err");}
 }
 function loadGame(){
