@@ -94,10 +94,23 @@ function toggleMP(){
   const fieldsEl=document.getElementById("mpFields");
   if(!modeEl||!fieldsEl) return;
   const m=modeEl.value;
-  fieldsEl.style.display=m==="online"?"block":"none";
-  if(m==="online"){
+  const isOnline=m==="online";
+  fieldsEl.style.display=isOnline?"block":"none";
+
+  // Online: each browser is one player — only show "Your Name", hide multi-player controls
+  const numPlayersField=document.getElementById("numPlayersField");
+  const aiDiffField=document.getElementById("aiDiffField");
+  if(numPlayersField) numPlayersField.style.display=isOnline?"none":"block";
+  if(aiDiffField) aiDiffField.style.display=isOnline?"none":"block";
+
+  if(isOnline){
     const s=document.getElementById("mpServer");
     if(s&&!s.value)s.value=window.location.origin;
+    // Replace player fields with single "Your Name" input
+    document.getElementById("playerFields").innerHTML=
+      `<div class="setup-field"><label>Your Name</label><input type="text" id="pn0" placeholder="Enter your name" value=""></div>`;
+  } else {
+    updateFields();
   }
 }
 
